@@ -28,7 +28,6 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import com.amazonaws.services.ec2.AmazonEC2;
 import com.cloudbees.jenkins.plugins.awscredentials.AWSCredentialsImpl;
 import com.cloudbees.jenkins.plugins.sshcredentials.SSHUserPrivateKey;
 import com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey;
@@ -53,6 +52,7 @@ import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.mockito.Mockito;
 import org.xml.sax.SAXException;
+import software.amazon.awssdk.services.ec2.Ec2Client;
 
 /**
  * @author Kohsuke Kawaguchi
@@ -92,7 +92,7 @@ public class AmazonEC2CloudTest {
     @Test
     public void testAmazonEC2FactoryGetInstance() throws Exception {
         AmazonEC2Cloud cloud = r.jenkins.clouds.get(AmazonEC2Cloud.class);
-        AmazonEC2 connection = cloud.connect();
+        Ec2Client connection = cloud.connect();
         Assert.assertNotNull(connection);
         Assert.assertTrue(Mockito.mockingDetails(connection).isMock());
     }
@@ -102,7 +102,7 @@ public class AmazonEC2CloudTest {
         r.jenkins.clouds.replace(new AmazonEC2Cloud(
                 "us-east-1", true, "abc", "us-east-1", null, "ghi", "3", Collections.emptyList(), "roleArn", null));
         AmazonEC2Cloud cloud = r.jenkins.clouds.get(AmazonEC2Cloud.class);
-        AmazonEC2 connection = cloud.connect();
+        Ec2Client connection = cloud.connect();
         Assert.assertNotNull(connection);
         Assert.assertTrue(Mockito.mockingDetails(connection).isMock());
     }

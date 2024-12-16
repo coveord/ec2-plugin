@@ -4,8 +4,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyString;
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.services.ec2.model.InstanceType;
 import com.trilead.ssh2.Connection;
 import com.trilead.ssh2.ServerHostKeyVerifier;
 import hudson.model.Node;
@@ -26,6 +24,8 @@ import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.LoggerRule;
 import org.testcontainers.containers.Container;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.ec2.model.InstanceType;
 
 public class SshHostKeyVerificationStrategyTest {
     private static final String COMPUTER_NAME = "MockInstanceForTest";
@@ -390,7 +390,7 @@ public class SshHostKeyVerificationStrategyTest {
         }
 
         @Override
-        public String getDecodedConsoleOutput() throws AmazonClientException {
+        public String getDecodedConsoleOutput() throws SdkException {
             return console;
         }
 
@@ -412,7 +412,7 @@ public class SshHostKeyVerificationStrategyTest {
                     null,
                     "default",
                     "foo",
-                    InstanceType.M1Large,
+                    InstanceType.M1_LARGE,
                     false,
                     "ttt",
                     Node.Mode.NORMAL,

@@ -1,5 +1,6 @@
 package hudson.plugins.ec2;
 
+import java.net.URI;
 import java.net.URL;
 import org.htmlunit.html.HtmlForm;
 import org.htmlunit.html.HtmlPage;
@@ -15,8 +16,8 @@ public class EucalyptusTest {
     public void configRoundTrip() throws Exception {
         Eucalyptus cloud = new Eucalyptus(
                 "test",
-                new URL("https://ec2"),
-                new URL("https://s3"),
+                URI.create("https://ec2"),
+                URI.create("https://s3"),
                 false,
                 null,
                 "test",

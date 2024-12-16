@@ -6,7 +6,6 @@ import static hudson.plugins.ec2.EC2AbstractSlave.DEFAULT_METADATA_SUPPORTED;
 import static hudson.plugins.ec2.EC2AbstractSlave.DEFAULT_METADATA_TOKENS_REQUIRED;
 import static org.junit.Assert.assertEquals;
 
-import com.amazonaws.services.ec2.model.InstanceType;
 import hudson.model.Node;
 import hudson.slaves.NodeProperty;
 import java.util.ArrayList;
@@ -14,6 +13,7 @@ import java.util.List;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import software.amazon.awssdk.services.ec2.model.InstanceType;
 
 public class EC2AbstractSlaveTest {
 
@@ -80,7 +80,7 @@ public class EC2AbstractSlaveTest {
                 null,
                 "default",
                 "foo",
-                InstanceType.M1Large,
+                InstanceType.M1_LARGE,
                 false,
                 "ttt",
                 Node.Mode.NORMAL,

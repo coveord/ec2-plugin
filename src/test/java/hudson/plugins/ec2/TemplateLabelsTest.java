@@ -25,7 +25,6 @@ package hudson.plugins.ec2;
 
 import static org.junit.Assert.assertEquals;
 
-import com.amazonaws.services.ec2.model.InstanceType;
 import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.labels.LabelAtom;
@@ -34,6 +33,7 @@ import java.util.List;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import software.amazon.awssdk.services.ec2.model.InstanceType;
 
 public class TemplateLabelsTest {
 
@@ -61,7 +61,7 @@ public class TemplateLabelsTest {
                 null,
                 "default",
                 "zone",
-                InstanceType.M1Large,
+                InstanceType.M1_LARGE,
                 false,
                 label,
                 mode,

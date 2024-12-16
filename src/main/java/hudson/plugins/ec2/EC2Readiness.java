@@ -1,9 +1,9 @@
 package hudson.plugins.ec2;
 
-import com.amazonaws.AmazonClientException;
+import software.amazon.awssdk.core.exception.SdkException;
 
 public interface EC2Readiness {
     public boolean isReady();
 
-    public String getEc2ReadinessStatus() throws AmazonClientException;
+    public String getEc2ReadinessStatus() throws SdkException;
 }

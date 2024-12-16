@@ -1,6 +1,5 @@
 package hudson.plugins.ec2;
 
-import com.amazonaws.services.ec2.model.InstanceType;
 import hudson.model.Node;
 import hudson.plugins.ec2.util.SSHCredentialHelper;
 import java.security.Security;
@@ -12,6 +11,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import software.amazon.awssdk.services.ec2.model.InstanceType;
 
 public class EC2SlaveMonitorTest {
 
@@ -32,7 +32,7 @@ public class EC2SlaveMonitorTest {
                 null,
                 "default",
                 "foo",
-                InstanceType.M1Large,
+                InstanceType.M1_LARGE,
                 false,
                 "ttt",
                 Node.Mode.NORMAL,
@@ -93,7 +93,7 @@ public class EC2SlaveMonitorTest {
                 null,
                 "defaultsecgroup",
                 "remotefs",
-                InstanceType.M1Large,
+                InstanceType.M1_LARGE,
                 false,
                 "label",
                 Node.Mode.NORMAL,

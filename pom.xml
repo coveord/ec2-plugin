@@ -109,6 +109,11 @@ THE SOFTWARE.
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.17.1</version>
+    </dependency>
+    <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>apache-httpcomponents-client-4-api</artifactId>
     </dependency>
@@ -142,14 +147,20 @@ THE SOFTWARE.
       <artifactId>trilead-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.plugins.aws-java-sdk</groupId>
-      <artifactId>aws-java-sdk-ec2</artifactId>
-      <version>1.12.696-451.v0651a_da_9ca_ec</version>
+      <groupId>io.jenkins.plugins.aws-java-sdk2</groupId>
+      <artifactId>aws-java-sdk2-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.plugins.aws-java-sdk</groupId>
-      <artifactId>aws-java-sdk-minimal</artifactId>
-      <version>1.12.767-467.vb_e93f0c614b_6</version>
+      <groupId>io.jenkins.plugins.aws-java-sdk2</groupId>
+      <artifactId>aws-java-sdk2-ec2</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.jenkins.plugins.aws-java-sdk2</groupId>
+      <artifactId>aws-java-sdk2-s3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.jenkins.plugins.aws-java-sdk2</groupId>
+      <artifactId>aws-java-sdk2-sts</artifactId>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
@@ -159,6 +170,36 @@ THE SOFTWARE.
       <groupId>org.kohsuke</groupId>
       <artifactId>libzfs</artifactId>
       <version>0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>annotations</artifactId>
+      <version>2.29.32</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>apache-client</artifactId>
+      <version>2.29.32</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>http-client-spi</artifactId>
+      <version>2.29.32</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>metrics-spi</artifactId>
+      <version>2.29.32</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>netty-nio-client</artifactId>
+      <version>2.29.32</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>utils</artifactId>
+      <version>2.29.32</version>
     </dependency>
     <dependency>
       <groupId>io.jenkins</groupId>

@@ -28,10 +28,10 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
-import com.amazonaws.services.ec2.model.Filter;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.Test;
+import software.amazon.awssdk.services.ec2.model.Filter;
 
 public class EC2FilterTest {
     @Test
@@ -42,8 +42,8 @@ public class EC2FilterTest {
         assertEquals("EC2Filter{name=\"name\", values=\"value\"}", ec2Filter.toString());
         Filter filter = ec2Filter.toFilter();
         assertNotNull(filter);
-        assertEquals("name", filter.getName());
-        assertEquals(Arrays.asList("value"), filter.getValues());
+        assertEquals("name", filter.name());
+        assertEquals(Arrays.asList("value"), filter.values());
     }
 
     @Test
@@ -54,8 +54,8 @@ public class EC2FilterTest {
         assertEquals("EC2Filter{name=\"name\", values=\"value1 'value 2'\"}", ec2Filter.toString());
         Filter filter = ec2Filter.toFilter();
         assertNotNull(filter);
-        assertEquals("name", filter.getName());
-        assertEquals(Arrays.asList("value1", "value 2"), filter.getValues());
+        assertEquals("name", filter.name());
+        assertEquals(Arrays.asList("value1", "value 2"), filter.values());
     }
 
     @Test
@@ -66,8 +66,8 @@ public class EC2FilterTest {
         assertEquals("EC2Filter{name=\"\", values=\"\"}", ec2Filter.toString());
         Filter filter = ec2Filter.toFilter();
         assertNotNull(filter);
-        assertEquals("", filter.getName());
-        assertEquals(Collections.emptyList(), filter.getValues());
+        assertEquals("", filter.name());
+        assertEquals(Collections.emptyList(), filter.values());
     }
 
     @Test

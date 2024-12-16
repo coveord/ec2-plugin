@@ -31,36 +31,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.amazonaws.services.ec2.AmazonEC2;
-import com.amazonaws.services.ec2.model.AmazonEC2Exception;
-import com.amazonaws.services.ec2.model.DescribeImagesRequest;
-import com.amazonaws.services.ec2.model.DescribeImagesResult;
-import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
-import com.amazonaws.services.ec2.model.DescribeInstancesResult;
-import com.amazonaws.services.ec2.model.DescribeSecurityGroupsRequest;
-import com.amazonaws.services.ec2.model.DescribeSecurityGroupsResult;
-import com.amazonaws.services.ec2.model.DescribeSubnetsRequest;
-import com.amazonaws.services.ec2.model.DescribeSubnetsResult;
-import com.amazonaws.services.ec2.model.HttpTokensState;
-import com.amazonaws.services.ec2.model.IamInstanceProfile;
-import com.amazonaws.services.ec2.model.Image;
-import com.amazonaws.services.ec2.model.Instance;
-import com.amazonaws.services.ec2.model.InstanceMetadataEndpointState;
-import com.amazonaws.services.ec2.model.InstanceMetadataOptionsRequest;
-import com.amazonaws.services.ec2.model.InstanceNetworkInterfaceSpecification;
-import com.amazonaws.services.ec2.model.InstanceState;
-import com.amazonaws.services.ec2.model.InstanceType;
-import com.amazonaws.services.ec2.model.KeyPair;
-import com.amazonaws.services.ec2.model.RequestSpotInstancesRequest;
-import com.amazonaws.services.ec2.model.Reservation;
-import com.amazonaws.services.ec2.model.RunInstancesRequest;
-import com.amazonaws.services.ec2.model.RunInstancesResult;
-import com.amazonaws.services.ec2.model.SecurityGroup;
-import com.amazonaws.services.ec2.model.Subnet;
+import hudson.plugins.ec2.util.KeyPair;
+import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.*;
 import hudson.Util;
 import hudson.model.Node;
 import hudson.plugins.ec2.SlaveTemplate.ProvisionOptions;
 import hudson.plugins.ec2.util.MinimumNumberOfInstancesTimeRangeConfig;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -68,6 +48,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 import org.htmlunit.html.HtmlForm;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -86,7 +67,7 @@ public class SlaveTemplateTest {
     private final SpotConfiguration TEST_SPOT_CFG = null;
     private final String TEST_SEC_GROUPS = "default";
     private final String TEST_REMOTE_FS = "foo";
-    private final InstanceType TEST_INSTANCE_TYPE = InstanceType.M1Large;
+    private final InstanceType TEST_INSTANCE_TYPE = InstanceType.M1_LARGE;
     private final boolean TEST_EBSO = false;
     private final String TEST_LABEL = "ttt";
 
@@ -227,8 +208,7 @@ public class SlaveTemplateTest {
      * Tests to make sure the agent created has been configured properly. Also tests to make sure the spot max bid price
      * has been set properly.
      *
-     * @throws Exception
-     *             - Exception that can be thrown by the Jenkins test harness
+     * @throws Exception - Exception that can be thrown by the Jenkins test harness
      */
     @Test
     public void testConfigWithSpotBidPrice() throws Exception {
@@ -581,7 +561,7 @@ public class SlaveTemplateTest {
         templates.add(orig);
         templates.add(noSubnet);
         for (SlaveTemplate template : templates) {
-            AmazonEC2 mockedEC2 = setupTestForProvisioning(template);
+            Ec2Client mockedEC2 = setupTestForProvisioning(template);
 
             ArgumentCaptor<RunInstancesRequest> riRequestCaptor = ArgumentCaptor.forClass(RunInstancesRequest.class);
 
@@ -589,18 +569,18 @@ public class SlaveTemplateTest {
             verify(mockedEC2).runInstances(riRequestCaptor.capture());
 
             RunInstancesRequest actualRequest = riRequestCaptor.getValue();
-            List<InstanceNetworkInterfaceSpecification> actualNets = actualRequest.getNetworkInterfaces();
+            List<InstanceNetworkInterfaceSpecification> actualNets = actualRequest.networkInterfaces();
 
             assertEquals(actualNets.size(), 0);
             String templateSubnet = Util.fixEmpty(template.getSubnetId());
-            assertEquals(actualRequest.getSubnetId(), templateSubnet);
+            assertEquals(actualRequest.subnetId(), templateSubnet);
             if (templateSubnet != null) {
                 assertEquals(
-                        actualRequest.getSecurityGroupIds(),
+                        actualRequest.securityGroupIds(),
                         Stream.of("some-group-id").collect(Collectors.toList()));
             } else {
                 assertEquals(
-                        actualRequest.getSecurityGroups(),
+                        actualRequest.securityGroups(),
                         Stream.of(securityGroups).collect(Collectors.toList()));
             }
         }
@@ -685,7 +665,7 @@ public class SlaveTemplateTest {
         templates.add(orig);
         templates.add(noSubnet);
         for (SlaveTemplate template : templates) {
-            AmazonEC2 mockedEC2 = setupTestForProvisioning(template);
+            Ec2Client mockedEC2 = setupTestForProvisioning(template);
 
             ArgumentCaptor<RunInstancesRequest> riRequestCaptor = ArgumentCaptor.forClass(RunInstancesRequest.class);
 
@@ -694,13 +674,13 @@ public class SlaveTemplateTest {
 
             RunInstancesRequest actualRequest = riRequestCaptor.getValue();
             InstanceNetworkInterfaceSpecification actualNet =
-                    actualRequest.getNetworkInterfaces().get(0);
+                    actualRequest.networkInterfaces().get(0);
 
-            assertEquals(actualNet.getSubnetId(), Util.fixEmpty(template.getSubnetId()));
-            assertEquals(actualNet.getGroups(), Stream.of("some-group-id").collect(Collectors.toList()));
-            assertEquals(actualRequest.getSubnetId(), null);
-            assertEquals(actualRequest.getSecurityGroupIds(), Collections.emptyList());
-            assertEquals(actualRequest.getSecurityGroups(), Collections.emptyList());
+            assertEquals(actualNet.subnetId(), Util.fixEmpty(template.getSubnetId()));
+            assertEquals(actualNet.groups(), Stream.of("some-group-id").collect(Collectors.toList()));
+            assertEquals(actualRequest.subnetId(), null);
+            assertEquals(actualRequest.securityGroupIds(), Collections.emptyList());
+            assertEquals(actualRequest.securityGroups(), Collections.emptyList());
         }
     }
 
@@ -749,13 +729,14 @@ public class SlaveTemplateTest {
                 associatePublicIp,
                 "");
 
-        AmazonEC2 mockedEC2 = setupTestForProvisioning(template);
+        Ec2Client mockedEC2 = setupTestForProvisioning(template);
 
-        AmazonEC2Exception quotaExceededException = new AmazonEC2Exception("Request has expired");
-        quotaExceededException.setServiceName("AmazonEC2");
-        quotaExceededException.setStatusCode(400);
-        quotaExceededException.setErrorCode("MaxSpotInstanceCountExceeded");
-        quotaExceededException.setRequestId("00000000-0000-0000-0000-000000000000");
+        AwsServiceException quotaExceededException = Ec2Exception.builder()
+                .statusCode(400)
+                .requestId("00000000-0000-0000-0000-000000000000")
+                .awsErrorDetails(AwsErrorDetails.builder().serviceName("AmazonEC2").errorCode("MaxSpotInstanceCountExceeded").build())
+                .build();
+
         when(mockedEC2.requestSpotInstances(any(RequestSpotInstancesRequest.class)))
                 .thenThrow(quotaExceededException);
 
@@ -764,58 +745,59 @@ public class SlaveTemplateTest {
         verify(mockedEC2).runInstances(any(RunInstancesRequest.class));
     }
 
-    private AmazonEC2 setupTestForProvisioning(SlaveTemplate template) throws Exception {
+    private Ec2Client setupTestForProvisioning(SlaveTemplate template) throws Exception {
         AmazonEC2Cloud mockedCloud = mock(AmazonEC2Cloud.class);
-        AmazonEC2 mockedEC2 = mock(AmazonEC2.class);
+        Ec2Client mockedEC2 = mock(Ec2Client.class);
         EC2PrivateKey mockedPrivateKey = mock(EC2PrivateKey.class);
-        KeyPair mockedKeyPair = new KeyPair();
-        mockedKeyPair.setKeyName("some-key-name");
+        KeyPair mockedKeyPair = new KeyPair(KeyPairInfo.builder().keyName("some-key-name")
+                .build(), "some-material");
         when(mockedPrivateKey.find(mockedEC2)).thenReturn(mockedKeyPair);
         when(mockedCloud.connect()).thenReturn(mockedEC2);
         when(mockedCloud.resolvePrivateKey()).thenReturn(mockedPrivateKey);
 
         template.parent = mockedCloud;
 
-        DescribeImagesResult mockedImagesResult = mock(DescribeImagesResult.class);
-        Image mockedImage = new Image();
-        mockedImage.setImageId(template.getAmi());
-        when(mockedImagesResult.getImages()).thenReturn(Stream.of(mockedImage).collect(Collectors.toList()));
+        DescribeImagesResponse mockedImagesResult = mock(DescribeImagesResponse.class);
+        Image mockedImage = Image.builder()
+                .imageId(template.getAmi())
+                .build();
+        when(mockedImagesResult.images()).thenReturn(Stream.of(mockedImage).collect(Collectors.toList()));
         when(mockedEC2.describeImages(any(DescribeImagesRequest.class))).thenReturn(mockedImagesResult);
 
-        DescribeSecurityGroupsResult mockedSecurityGroupsResult = mock(DescribeSecurityGroupsResult.class);
-        SecurityGroup mockedSecurityGroup = new SecurityGroup();
-        mockedSecurityGroup.setVpcId("some-vpc-id");
-        mockedSecurityGroup.setGroupId("some-group-id");
+        DescribeSecurityGroupsResponse mockedSecurityGroupsResult = mock(DescribeSecurityGroupsResponse.class);
+        SecurityGroup mockedSecurityGroup = SecurityGroup.builder()
+                .vpcId("some-vpc-id")
+                .groupId("some-group-id").build();
 
         List<SecurityGroup> mockedSecurityGroups =
                 Stream.of(mockedSecurityGroup).collect(Collectors.toList());
-        when(mockedSecurityGroupsResult.getSecurityGroups()).thenReturn(mockedSecurityGroups);
+        when(mockedSecurityGroupsResult.securityGroups()).thenReturn(mockedSecurityGroups);
         when(mockedEC2.describeSecurityGroups(any(DescribeSecurityGroupsRequest.class)))
                 .thenReturn(mockedSecurityGroupsResult);
 
-        DescribeSubnetsResult mockedDescribeSubnetsResult = mock(DescribeSubnetsResult.class);
-        Subnet mockedSubnet = new Subnet();
+        DescribeSubnetsResponse mockedDescribeSubnetsResult = mock(DescribeSubnetsResponse.class);
+        Subnet mockedSubnet = Subnet.builder()
+                .build();
         List<Subnet> mockedSubnets = Stream.of(mockedSubnet).collect(Collectors.toList());
-        when(mockedDescribeSubnetsResult.getSubnets()).thenReturn(mockedSubnets);
+        when(mockedDescribeSubnetsResult.subnets()).thenReturn(mockedSubnets);
         when(mockedEC2.describeSubnets(any(DescribeSubnetsRequest.class))).thenReturn(mockedDescribeSubnetsResult);
 
-        IamInstanceProfile mockedInstanceProfile = new IamInstanceProfile();
-        mockedInstanceProfile.setArn(template.getIamInstanceProfile());
-        InstanceState mockInstanceState = new InstanceState();
-        mockInstanceState.setName("not terminated");
-        Instance mockedInstance = new Instance();
-        mockedInstance.setState(mockInstanceState);
-        mockedInstance.setIamInstanceProfile(mockedInstanceProfile);
-        Reservation mockedReservation = new Reservation();
-        mockedReservation.setInstances(Stream.of(mockedInstance).collect(Collectors.toList()));
+        IamInstanceProfile.Builder mockedInstanceProfileBuilder = IamInstanceProfile.builder();
+        mockedInstanceProfileBuilder.arn(template.getIamInstanceProfile());
+        Instance mockedInstance = Instance.builder()
+                .state(software.amazon.awssdk.services.ec2.model.InstanceState.builder().name(InstanceStateName.RUNNING).build())
+                .iamInstanceProfile(mockedInstanceProfileBuilder.build())
+                .build();
+        Reservation mockedReservation = Reservation.builder()
+                .instances(Stream.of(mockedInstance).collect(Collectors.toList())).build();
         List<Reservation> mockedReservations = Stream.of(mockedReservation).collect(Collectors.toList());
-        DescribeInstancesResult mockedDescribedInstancesResult = mock(DescribeInstancesResult.class);
-        when(mockedDescribedInstancesResult.getReservations()).thenReturn(mockedReservations);
+        DescribeInstancesResponse mockedDescribedInstancesResult = mock(DescribeInstancesResponse.class);
+        when(mockedDescribedInstancesResult.reservations()).thenReturn(mockedReservations);
         when(mockedEC2.describeInstances(any(DescribeInstancesRequest.class)))
                 .thenReturn(mockedDescribedInstancesResult);
 
-        RunInstancesResult mockedResult = mock(RunInstancesResult.class);
-        when(mockedResult.getReservation()).thenReturn(mockedReservation);
+        RunInstancesResponse mockedResult = mock(RunInstancesResponse.class);
+        when(mockedResult.reservationId()).thenReturn(mockedReservation.reservationId());
         when(mockedEC2.runInstances(any(RunInstancesRequest.class))).thenReturn(mockedResult);
 
         return mockedEC2;
@@ -830,7 +812,7 @@ public class SlaveTemplateTest {
                 TEST_SPOT_CFG,
                 TEST_SEC_GROUPS,
                 "foo",
-                InstanceType.Mac1Metal,
+                InstanceType.MAC1_METAL,
                 TEST_EBSO,
                 TEST_LABEL,
                 Node.Mode.NORMAL,
@@ -1081,7 +1063,7 @@ public class SlaveTemplateTest {
                 2,
                 false);
 
-        AmazonEC2 mockedEC2 = setupTestForProvisioning(template);
+        Ec2Client mockedEC2 = setupTestForProvisioning(template);
 
         ArgumentCaptor<RunInstancesRequest> riRequestCaptor = ArgumentCaptor.forClass(RunInstancesRequest.class);
 
@@ -1089,7 +1071,7 @@ public class SlaveTemplateTest {
         verify(mockedEC2).runInstances(riRequestCaptor.capture());
 
         RunInstancesRequest actualRequest = riRequestCaptor.getValue();
-        InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.getMetadataOptions();
+        InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.metadataOptions();
         assertEquals(metadataOptionsRequest, null);
     }
 
@@ -1141,7 +1123,7 @@ public class SlaveTemplateTest {
                 2,
                 true);
 
-        AmazonEC2 mockedEC2 = setupTestForProvisioning(template);
+        Ec2Client mockedEC2 = setupTestForProvisioning(template);
 
         ArgumentCaptor<RunInstancesRequest> riRequestCaptor = ArgumentCaptor.forClass(RunInstancesRequest.class);
 
@@ -1149,10 +1131,10 @@ public class SlaveTemplateTest {
         verify(mockedEC2).runInstances(riRequestCaptor.capture());
 
         RunInstancesRequest actualRequest = riRequestCaptor.getValue();
-        InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.getMetadataOptions();
-        assertEquals(metadataOptionsRequest.getHttpEndpoint(), InstanceMetadataEndpointState.Enabled.toString());
-        assertEquals(metadataOptionsRequest.getHttpTokens(), HttpTokensState.Optional.toString());
-        assertEquals(metadataOptionsRequest.getHttpPutResponseHopLimit(), Integer.valueOf(2));
+        InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.metadataOptions();
+        assertEquals(metadataOptionsRequest.httpEndpoint(), InstanceMetadataEndpointState.ENABLED.toString());
+        assertEquals(metadataOptionsRequest.httpTokens(), HttpTokensState.OPTIONAL.toString());
+        assertEquals(metadataOptionsRequest.httpPutResponseHopLimit(), Integer.valueOf(2));
     }
 
     @Test
@@ -1203,7 +1185,7 @@ public class SlaveTemplateTest {
                 2,
                 true);
 
-        AmazonEC2 mockedEC2 = setupTestForProvisioning(template);
+        Ec2Client mockedEC2 = setupTestForProvisioning(template);
 
         ArgumentCaptor<RunInstancesRequest> riRequestCaptor = ArgumentCaptor.forClass(RunInstancesRequest.class);
 
@@ -1211,10 +1193,10 @@ public class SlaveTemplateTest {
         verify(mockedEC2).runInstances(riRequestCaptor.capture());
 
         RunInstancesRequest actualRequest = riRequestCaptor.getValue();
-        InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.getMetadataOptions();
-        assertEquals(metadataOptionsRequest.getHttpEndpoint(), InstanceMetadataEndpointState.Enabled.toString());
-        assertEquals(metadataOptionsRequest.getHttpTokens(), HttpTokensState.Required.toString());
-        assertEquals(metadataOptionsRequest.getHttpPutResponseHopLimit(), Integer.valueOf(2));
+        InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.metadataOptions();
+        assertEquals(metadataOptionsRequest.httpEndpoint(), InstanceMetadataEndpointState.ENABLED.toString());
+        assertEquals(metadataOptionsRequest.httpTokens(), HttpTokensState.REQUIRED.toString());
+        assertEquals(metadataOptionsRequest.httpPutResponseHopLimit(), Integer.valueOf(2));
     }
 
     @Test
@@ -1265,7 +1247,7 @@ public class SlaveTemplateTest {
                 null,
                 true);
 
-        AmazonEC2 mockedEC2 = setupTestForProvisioning(template);
+        Ec2Client mockedEC2 = setupTestForProvisioning(template);
 
         ArgumentCaptor<RunInstancesRequest> riRequestCaptor = ArgumentCaptor.forClass(RunInstancesRequest.class);
 
@@ -1273,10 +1255,10 @@ public class SlaveTemplateTest {
         verify(mockedEC2).runInstances(riRequestCaptor.capture());
 
         RunInstancesRequest actualRequest = riRequestCaptor.getValue();
-        InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.getMetadataOptions();
-        assertEquals(metadataOptionsRequest.getHttpEndpoint(), InstanceMetadataEndpointState.Enabled.toString());
-        assertEquals(metadataOptionsRequest.getHttpTokens(), HttpTokensState.Required.toString());
-        assertEquals(metadataOptionsRequest.getHttpPutResponseHopLimit(), Integer.valueOf(1));
+        InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.metadataOptions();
+        assertEquals(metadataOptionsRequest.httpEndpoint(), InstanceMetadataEndpointState.ENABLED.toString());
+        assertEquals(metadataOptionsRequest.httpTokens(), HttpTokensState.REQUIRED.toString());
+        assertEquals(metadataOptionsRequest.httpPutResponseHopLimit(), Integer.valueOf(1));
     }
 
     private HtmlForm getConfigForm(AmazonEC2Cloud ac) throws IOException, SAXException {

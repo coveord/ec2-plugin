@@ -27,6 +27,7 @@ import hudson.Extension;
 import hudson.model.ItemGroup;
 import hudson.util.FormValidation;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
 import javax.servlet.ServletException;
@@ -41,14 +42,14 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
  * @author Kohsuke Kawaguchi
  */
 public class Eucalyptus extends EC2Cloud {
-    private final URL ec2endpoint;
-    private final URL s3endpoint;
+    private final URI ec2endpoint;
+    private final URI s3endpoint;
 
     @DataBoundConstructor
     public Eucalyptus(
             String name,
-            URL ec2EndpointUrl,
-            URL s3EndpointUrl,
+            URI ec2EndpointUri,
+            URI s3EndpointUri,
             boolean useInstanceProfileForCredentials,
             String credentialsId,
             String privateKey,
@@ -67,14 +68,14 @@ public class Eucalyptus extends EC2Cloud {
                 templates,
                 roleArn,
                 roleSessionName);
-        this.ec2endpoint = ec2EndpointUrl;
-        this.s3endpoint = s3EndpointUrl;
+        this.ec2endpoint = ec2EndpointUri;
+        this.s3endpoint = s3EndpointUri;
     }
 
     @Deprecated
     public Eucalyptus(
-            URL ec2EndpointUrl,
-            URL s3EndpointUrl,
+            URI ec2EndpointUri,
+            URI s3EndpointUri,
             boolean useInstanceProfileForCredentials,
             String credentialsId,
             String privateKey,
@@ -86,8 +87,8 @@ public class Eucalyptus extends EC2Cloud {
             throws IOException {
         this(
                 "eucalyptus",
-                ec2EndpointUrl,
-                s3EndpointUrl,
+                ec2EndpointUri,
+                s3EndpointUri,
                 useInstanceProfileForCredentials,
                 credentialsId,
                 privateKey,
@@ -100,8 +101,8 @@ public class Eucalyptus extends EC2Cloud {
 
     @Deprecated
     public Eucalyptus(
-            URL ec2EndpointUrl,
-            URL s3EndpointUrl,
+            URI ec2EndpointUri,
+            URI s3EndpointUri,
             boolean useInstanceProfileForCredentials,
             String credentialsId,
             String privateKey,
@@ -112,8 +113,8 @@ public class Eucalyptus extends EC2Cloud {
             throws IOException {
         this(
                 "eucalyptus",
-                ec2EndpointUrl,
-                s3EndpointUrl,
+                ec2EndpointUri,
+                s3EndpointUri,
                 useInstanceProfileForCredentials,
                 credentialsId,
                 privateKey,
@@ -125,12 +126,12 @@ public class Eucalyptus extends EC2Cloud {
     }
 
     @Override
-    public URL getEc2EndpointUrl() throws IOException {
+    public URI getEc2EndpointUri() throws IOException {
         return this.ec2endpoint;
     }
 
     @Override
-    public URL getS3EndpointUrl() throws IOException {
+    public URI getS3EndpointUri() throws IOException {
         return this.s3endpoint;
     }
 
@@ -145,7 +146,7 @@ public class Eucalyptus extends EC2Cloud {
         @RequirePOST
         public FormValidation doTestConnection(
                 @AncestorInPath ItemGroup context,
-                @QueryParameter URL ec2endpoint,
+                @QueryParameter URI ec2endpoint,
                 @QueryParameter boolean useInstanceProfileForCredentials,
                 @QueryParameter String credentialsId,
                 @QueryParameter String sshKeysCredentialsId,

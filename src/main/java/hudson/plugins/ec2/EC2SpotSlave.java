@@ -1,13 +1,12 @@
 package hudson.plugins.ec2;
-
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.services.ec2.AmazonEC2;
-import com.amazonaws.services.ec2.model.CancelSpotInstanceRequestsRequest;
-import com.amazonaws.services.ec2.model.DescribeSpotInstanceRequestsRequest;
-import com.amazonaws.services.ec2.model.DescribeSpotInstanceRequestsResult;
-import com.amazonaws.services.ec2.model.SpotInstanceRequest;
-import com.amazonaws.services.ec2.model.SpotInstanceState;
-import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.CancelSpotInstanceRequestsRequest;
+import software.amazon.awssdk.services.ec2.model.DescribeSpotInstanceRequestsRequest;
+import software.amazon.awssdk.services.ec2.model.DescribeSpotInstanceRequestsResponse;
+import software.amazon.awssdk.services.ec2.model.SpotInstanceRequest;
+import software.amazon.awssdk.services.ec2.model.SpotInstanceState;
+import software.amazon.awssdk.services.ec2.model.TerminateInstancesRequest;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.Extension;
 import hudson.model.Computer;
@@ -185,16 +184,17 @@ public class EC2SpotSlave extends EC2AbstractSlave implements EC2Readiness {
                     Computer.threadPoolForRemoting.submit(() -> {
                         try {
                             // Cancel the spot request
-                            AmazonEC2 ec2 = getCloud().connect();
+                            Ec2Client ec2 = getCloud().connect();
 
                             String instanceId = getInstanceId();
                             List<String> requestIds = Collections.singletonList(spotInstanceRequestId);
                             CancelSpotInstanceRequestsRequest cancelRequest =
-                                    new CancelSpotInstanceRequestsRequest(requestIds);
+                                    CancelSpotInstanceRequestsRequest.builder()
+                                            .build();
                             try {
                                 ec2.cancelSpotInstanceRequests(cancelRequest);
                                 LOGGER.info("Cancelled Spot request: " + spotInstanceRequestId);
-                            } catch (AmazonClientException e) {
+                            } catch (SdkException e) {
                                 // Spot request is no longer valid
                                 LOGGER.log(Level.WARNING, "Failed to cancel Spot request: " + spotInstanceRequestId, e);
                             }
@@ -208,11 +208,12 @@ public class EC2SpotSlave extends EC2AbstractSlave implements EC2Readiness {
                                     LOGGER.info("EC2 instance already terminated: " + instanceId);
                                 } else {
                                     TerminateInstancesRequest request =
-                                            new TerminateInstancesRequest(Collections.singletonList(instanceId));
+                                            TerminateInstancesRequest.builder()
+                                                    .build();
                                     try {
                                         ec2.terminateInstances(request);
                                         LOGGER.info("Terminated EC2 instance (terminated): " + instanceId);
-                                    } catch (AmazonClientException e) {
+                                    } catch (SdkException e) {
                                         // Spot request is no longer valid
                                         LOGGER.log(
                                                 Level.WARNING,
@@ -251,20 +252,21 @@ public class EC2SpotSlave extends EC2AbstractSlave implements EC2Readiness {
      */
     @CheckForNull
     SpotInstanceRequest getSpotRequest() {
-        AmazonEC2 ec2 = getCloud().connect();
+        Ec2Client ec2 = getCloud().connect();
 
         if (this.spotInstanceRequestId == null) {
             return null;
         }
 
         DescribeSpotInstanceRequestsRequest dsirRequest =
-                new DescribeSpotInstanceRequestsRequest().withSpotInstanceRequestIds(this.spotInstanceRequestId);
+                DescribeSpotInstanceRequestsRequest.builder().spotInstanceRequestIds(this.spotInstanceRequestId)
+                .build();
         try {
-            DescribeSpotInstanceRequestsResult dsirResult = ec2.describeSpotInstanceRequests(dsirRequest);
-            List<SpotInstanceRequest> siRequests = dsirResult.getSpotInstanceRequests();
+            DescribeSpotInstanceRequestsResponse dsirResult = ec2.describeSpotInstanceRequests(dsirRequest);
+            List<SpotInstanceRequest> siRequests = dsirResult.spotInstanceRequests();
 
             return siRequests.get(0);
-        } catch (AmazonClientException e) {
+        } catch (SdkException e) {
             // Spot request is no longer valid
             LOGGER.log(
                     Level.WARNING,
@@ -280,10 +282,10 @@ public class EC2SpotSlave extends EC2AbstractSlave implements EC2Readiness {
             return true;
         }
 
-        SpotInstanceState requestState = SpotInstanceState.fromValue(spotRequest.getState());
-        return requestState == SpotInstanceState.Cancelled
-                || requestState == SpotInstanceState.Closed
-                || requestState == SpotInstanceState.Failed;
+        SpotInstanceState requestState = SpotInstanceState.fromValue(spotRequest.state().toString());
+        return requestState == SpotInstanceState.CANCELLED
+                || requestState == SpotInstanceState.CLOSED
+                || requestState == SpotInstanceState.FAILED;
     }
 
     /**
@@ -298,7 +300,7 @@ public class EC2SpotSlave extends EC2AbstractSlave implements EC2Readiness {
         if (StringUtils.isEmpty(instanceId)) {
             SpotInstanceRequest sr = getSpotRequest();
             if (sr != null) {
-                instanceId = sr.getInstanceId();
+                instanceId = sr.instanceId();
             }
         }
         return instanceId;
@@ -324,7 +326,7 @@ public class EC2SpotSlave extends EC2AbstractSlave implements EC2Readiness {
     public String getEc2Type() {
         SpotInstanceRequest spotRequest = getSpotRequest();
         if (spotRequest != null) {
-            String spotMaxBidPrice = spotRequest.getSpotPrice();
+            String spotMaxBidPrice = spotRequest.spotPrice();
             return Messages.EC2SpotSlave_Spot1()
                     + spotMaxBidPrice.substring(0, spotMaxBidPrice.length() - 3)
                     + Messages.EC2SpotSlave_Spot2();
@@ -341,8 +343,8 @@ public class EC2SpotSlave extends EC2AbstractSlave implements EC2Readiness {
     public String getEc2ReadinessStatus() {
         SpotInstanceRequest sr = getSpotRequest();
         if (sr != null) {
-            return sr.getStatus().getMessage();
+            return sr.status().message();
         }
-        throw new AmazonClientException("No spot instance request");
+        throw SdkException.builder().message("No spot instance request").build();
     }
 }

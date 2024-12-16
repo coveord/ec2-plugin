@@ -22,10 +22,9 @@
  * THE SOFTWARE.
  */
 package hudson.plugins.ec2.ssh;
-
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.services.ec2.model.Instance;
-import com.amazonaws.services.ec2.model.KeyPair;
+import hudson.plugins.ec2.util.KeyPair;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.ec2.model.Instance;
 import com.trilead.ssh2.*;
 import hudson.FilePath;
 import hudson.ProxyConfiguration;
@@ -115,7 +114,7 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
 
     @Override
     protected void launchScript(EC2Computer computer, TaskListener listener)
-            throws IOException, AmazonClientException, InterruptedException {
+            throws IOException, SdkException, InterruptedException {
         final Connection conn;
         Connection cleanupConn = null; // java's code path analysis for final
         // doesn't work that well.
@@ -149,9 +148,9 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
             }
 
             if (!readinessNode.isReady()) {
-                throw new AmazonClientException(
+                throw SdkException.builder().message(
                         "Node still not ready, timed out after " + (readinessTries * readinessSleepMs / 1000)
-                                + "s with status " + readinessNode.getEc2ReadinessStatus());
+                                + "s with status " + readinessNode.getEc2ReadinessStatus()).build();
             }
         }
 
@@ -175,7 +174,7 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
                 KeyPair key = computer.getCloud().getKeyPair();
                 if (key == null
                         || !cleanupConn.authenticateWithPublicKey(
-                                computer.getRemoteAdmin(), key.getKeyMaterial().toCharArray(), "")) {
+                                computer.getRemoteAdmin(), key.getMaterial().toCharArray(), "")) {
                     logWarning(computer, listener, "Authentication failed");
                     return; // failed to connect as root.
                 }
@@ -239,7 +238,7 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
             final String javaPath = node.javaPath;
             try {
                 Instance nodeInstance = computer.describeInstance();
-                if (nodeInstance.getInstanceType().equals("mac2.metal")) {
+                if (nodeInstance.instanceType().equals("mac2.metal")) {
                     LOGGER.info("Running Command for mac2.metal");
                     executeRemote(
                             computer,
@@ -373,7 +372,7 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
     }
 
     private boolean bootstrap(EC2Computer computer, TaskListener listener, SlaveTemplate template)
-            throws IOException, InterruptedException, AmazonClientException {
+            throws IOException, InterruptedException, SdkException {
         logInfo(computer, listener, "bootstrap()");
         Connection bootstrapConn = null;
         try {
@@ -389,13 +388,13 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
                     computer,
                     listener,
                     String.format(
-                            "Using private key %s (SHA-1 fingerprint %s)", key.getKeyName(), key.getKeyFingerprint()));
+                            "Using private key %s (SHA-1 fingerprint %s)", key.getKeyPairInfo().keyName(), key.getKeyPairInfo().keyFingerprint()));
             while (tries-- > 0) {
                 logInfo(computer, listener, "Authenticating as " + computer.getRemoteAdmin());
                 try {
                     bootstrapConn = connectToSsh(computer, listener, template);
                     isAuthenticated = bootstrapConn.authenticateWithPublicKey(
-                            computer.getRemoteAdmin(), key.getKeyMaterial().toCharArray(), "");
+                            computer.getRemoteAdmin(), key.getMaterial().toCharArray(), "");
                 } catch (IOException e) {
                     logException(computer, listener, "Exception trying to authenticate", e);
                     bootstrapConn.close();
@@ -419,7 +418,7 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
     }
 
     private Connection connectToSsh(EC2Computer computer, TaskListener listener, SlaveTemplate template)
-            throws AmazonClientException, InterruptedException {
+            throws SdkException, InterruptedException {
         final EC2AbstractSlave node = computer.getNode();
         final long timeout = node == null ? 0L : node.getLaunchTimeoutInMillis();
         final long startTime = System.currentTimeMillis();
@@ -427,9 +426,9 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
             try {
                 long waitTime = System.currentTimeMillis() - startTime;
                 if (timeout > 0 && waitTime > timeout) {
-                    throw new AmazonClientException("Timed out after " + (waitTime / 1000)
+                    throw SdkException.builder().message("Timed out after " + (waitTime / 1000)
                             + " seconds of waiting for ssh to become available. (maximum timeout configured is "
-                            + (timeout / 1000) + ")");
+                            + (timeout / 1000) + ")").build();
                 }
                 String host = getEC2HostAddress(computer, template);
 
@@ -491,7 +490,7 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
                 if (computer.isOffline()
                         && StringUtils.isNotBlank(computer.getOfflineCauseReason())
                         && computer.getOfflineCauseReason().equals(Messages.OfflineCause_SSHKeyCheckFailed())) {
-                    throw new AmazonClientException(
+                    throw SdkException.create(
                             "The connection couldn't be established and the computer is now offline", e);
                 } else {
                     logInfo(computer, listener, "Waiting for SSH to come up. Sleeping 5.");

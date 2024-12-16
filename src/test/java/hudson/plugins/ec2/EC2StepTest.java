@@ -8,8 +8,9 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-import com.amazonaws.services.ec2.AmazonEC2Client;
-import com.amazonaws.services.ec2.model.AmazonEC2Exception;
+import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.Ec2Exception;
 import hudson.model.PeriodicWork;
 import hudson.model.Result;
 import hudson.plugins.ec2.util.AmazonEC2FactoryMockImpl;
@@ -65,11 +66,11 @@ public class EC2StepTest {
     @Test
     public void testExpiredConnection() {
         when(cl.connect()).thenCallRealMethod();
-        when(cl.getEc2EndpointUrl()).thenCallRealMethod();
+        when(cl.getEc2EndpointUri()).thenCallRealMethod();
         when(cl.createCredentialsProvider()).thenCallRealMethod();
 
         // not expired ec2 client
-        AmazonEC2Client notExpiredClient = AmazonEC2FactoryMockImpl.createAmazonEC2Mock();
+        Ec2Client notExpiredClient = AmazonEC2FactoryMockImpl.createAmazonEC2Mock();
         AmazonEC2FactoryMockImpl.mock = notExpiredClient;
         assertSame("EC2 client not expired should be reused", notExpiredClient, cl.connect());
 
@@ -77,14 +78,13 @@ public class EC2StepTest {
         //  based on a real exception
         //  > Request has expired. (Service: AmazonEC2; Status Code: 400; Error Code: RequestExpired; Request ID:
         // 00000000-0000-0000-0000-000000000000)
-        AmazonEC2Exception expiredException = new AmazonEC2Exception("Request has expired");
-        expiredException.setServiceName("AmazonEC2");
-        expiredException.setStatusCode(400);
-        expiredException.setErrorCode("RequestExpired");
-        expiredException.setRequestId("00000000-0000-0000-0000-000000000000");
+        Ec2Exception.Builder expiredExceptionBuilder = Ec2Exception.builder();
+        expiredExceptionBuilder.statusCode(400);
+        expiredExceptionBuilder.awsErrorDetails(AwsErrorDetails.builder().serviceName("AmazonEC2").errorCode("RequestExpired").build());
+        expiredExceptionBuilder.requestId("00000000-0000-0000-0000-000000000000");
 
-        AmazonEC2Client expiredClient =
-                AmazonEC2FactoryMockImpl.createAmazonEC2Mock(new ThrowsException(expiredException));
+        Ec2Client expiredClient =
+                AmazonEC2FactoryMockImpl.createAmazonEC2Mock(new ThrowsException(expiredExceptionBuilder.build()));
         AmazonEC2FactoryMockImpl.mock = expiredClient;
         PeriodicWork work = PeriodicWork.all().get(EC2Cloud.EC2ConnectionUpdater.class);
         assertNotNull(work);

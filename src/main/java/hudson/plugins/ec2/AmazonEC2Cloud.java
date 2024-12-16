@@ -23,11 +23,11 @@
  */
 package hudson.plugins.ec2;
 
-import com.amazonaws.SdkClientException;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.ec2.AmazonEC2;
-import com.amazonaws.services.ec2.model.DescribeRegionsResult;
-import com.amazonaws.services.ec2.model.Region;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.DescribeRegionsResponse;
+import software.amazon.awssdk.services.ec2.model.Region;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
 import hudson.Util;
@@ -38,6 +38,8 @@ import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.List;
 import java.util.Locale;
@@ -137,26 +139,18 @@ public class AmazonEC2Cloud extends EC2Cloud {
         return region;
     }
 
-    public static URL getEc2EndpointUrl(String region) {
-        try {
-            return new URL("https://" + getAwsPartitionHostForService(region, "ec2"));
-        } catch (MalformedURLException e) {
-            throw new Error(e); // Impossible
-        }
+    public static URI getEc2EndpointUri(String region) {
+        return URI.create("https://" + getAwsPartitionHostForService(region, "ec2"));
     }
 
     @Override
-    public URL getEc2EndpointUrl() {
-        return getEc2EndpointUrl(getRegion());
+    public URI getEc2EndpointUri() {
+        return getEc2EndpointUri(getRegion());
     }
 
     @Override
-    public URL getS3EndpointUrl() {
-        try {
-            return new URL("https://" + getAwsPartitionHostForService(getRegion(), "s3") + "/");
-        } catch (MalformedURLException e) {
-            throw new Error(e); // Impossible
-        }
+    public URI getS3EndpointUri() {
+        return URI.create("https://" + getAwsPartitionHostForService(getRegion(), "s3") + "/");
     }
 
     public boolean isNoDelayProvisioning() {
@@ -178,7 +172,7 @@ public class AmazonEC2Cloud extends EC2Cloud {
     }
 
     @Override
-    protected AWSCredentialsProvider createCredentialsProvider() {
+    protected AwsCredentialsProvider createCredentialsProvider() {
         return createCredentialsProvider(
                 isUseInstanceProfileForCredentials(),
                 getCredentialsId(),
@@ -229,14 +223,14 @@ public class AmazonEC2Cloud extends EC2Cloud {
             ListBoxModel model = new ListBoxModel();
             if (Jenkins.get().hasPermission(Jenkins.ADMINISTER)) {
                 try {
-                    AWSCredentialsProvider credentialsProvider =
+                    AwsCredentialsProvider credentialsProvider =
                             createCredentialsProvider(useInstanceProfileForCredentials, credentialsId);
-                    AmazonEC2 client = AmazonEC2Factory.getInstance()
-                            .connect(credentialsProvider, determineEC2EndpointURL(altEC2Endpoint));
-                    DescribeRegionsResult regions = client.describeRegions();
-                    List<Region> regionList = regions.getRegions();
+                    Ec2Client client = AmazonEC2Factory.getInstance()
+                            .connect(credentialsProvider, determineEC2EndpointURI(altEC2Endpoint));
+                    DescribeRegionsResponse regions = client.describeRegions();
+                    List<Region> regionList = regions.regions();
                     for (Region r : regionList) {
-                        String name = r.getRegionName();
+                        String name = r.regionName();
                         model.add(name, name);
                     }
                 } catch (SdkClientException ex) {
@@ -249,18 +243,22 @@ public class AmazonEC2Cloud extends EC2Cloud {
         // Will use the alternate EC2 endpoint if provided by the UI (via a @QueryParameter field), or use the default
         // value if not specified.
         // VisibleForTesting
-        URL determineEC2EndpointURL(@Nullable String altEC2Endpoint) throws MalformedURLException {
+        URI determineEC2EndpointURI(@Nullable String altEC2Endpoint) throws MalformedURLException {
+            URI defaultEndpointURI = URI.create(DEFAULT_EC2_ENDPOINT);
             if (Util.fixEmpty(altEC2Endpoint) == null) {
-                return new URL(DEFAULT_EC2_ENDPOINT);
+                return defaultEndpointURI;
             }
             try {
-                return new URL(altEC2Endpoint);
+                URL url = new URL(altEC2Endpoint);
+                return url.toURI();
             } catch (MalformedURLException e) {
                 LOGGER.log(
                         Level.WARNING,
                         "The alternate EC2 endpoint is malformed ({0}). Using the default endpoint ({1})",
                         new Object[] {altEC2Endpoint, DEFAULT_EC2_ENDPOINT});
-                return new URL(DEFAULT_EC2_ENDPOINT);
+                return defaultEndpointURI;
+            } catch (URISyntaxException ex) {
+                throw new MalformedURLException(ex.getMessage());
             }
         }
 
@@ -281,7 +279,7 @@ public class AmazonEC2Cloud extends EC2Cloud {
 
             return super.doTestConnection(
                     context,
-                    getEc2EndpointUrl(region),
+                    getEc2EndpointUri(region),
                     useInstanceProfileForCredentials,
                     credentialsId,
                     sshKeysCredentialsId,

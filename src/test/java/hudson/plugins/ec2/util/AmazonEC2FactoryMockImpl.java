@@ -1,16 +1,18 @@
 package hudson.plugins.ec2.util;
 
 import static org.mockito.Mockito.mock;
-
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.services.ec2.AmazonEC2;
-import com.amazonaws.services.ec2.AmazonEC2Client;
-import com.amazonaws.services.ec2.model.*;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.*;
+import software.amazon.awssdk.services.ec2.Ec2Client;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
 import hudson.plugins.ec2.AmazonEC2Cloud;
 import hudson.plugins.ec2.EC2Cloud;
+
+import java.net.URI;
 import java.net.URL;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -26,7 +28,7 @@ public class AmazonEC2FactoryMockImpl implements AmazonEC2Factory {
     /**
      * public static to allow supplying own mock to tests.
      */
-    public static AmazonEC2Client mock;
+    public static Ec2Client mock;
 
     public static List<Instance> instances;
 
@@ -35,7 +37,7 @@ public class AmazonEC2FactoryMockImpl implements AmazonEC2Factory {
      *
      * @return mocked AmazonEC2
      */
-    public static AmazonEC2Client createAmazonEC2Mock() {
+    public static Ec2Client createAmazonEC2Mock() {
         instances = new ArrayList<>(); // Reset for each new mock. In the real world, the client is stateless, but this
         // is convenient for testing.
         return createAmazonEC2Mock(null);
@@ -48,12 +50,12 @@ public class AmazonEC2FactoryMockImpl implements AmazonEC2Factory {
      *            nullable
      * @return mocked AmazonEC2
      */
-    public static AmazonEC2Client createAmazonEC2Mock(@Nullable Answer defaultAnswer) {
-        AmazonEC2Client mock;
+    public static Ec2Client createAmazonEC2Mock(@Nullable Answer defaultAnswer) {
+        Ec2Client mock;
         if (defaultAnswer != null) {
-            mock = mock(AmazonEC2Client.class, defaultAnswer);
+            mock = mock(Ec2Client.class, defaultAnswer);
         } else {
-            mock = mock(AmazonEC2Client.class);
+            mock = mock(Ec2Client.class);
             mockDescribeRegions(mock);
             mockDescribeInstances(mock);
             mockDescribeImages(mock);
@@ -67,175 +69,199 @@ public class AmazonEC2FactoryMockImpl implements AmazonEC2Factory {
         return mock;
     }
 
-    private static void mockDescribeRegions(AmazonEC2Client mock) {
-        DescribeRegionsResult describeRegionsResultMock = mock(DescribeRegionsResult.class);
-        Mockito.doReturn(Collections.singletonList(new Region().withRegionName(EC2Cloud.DEFAULT_EC2_HOST)))
+    private static void mockDescribeRegions(Ec2Client mock) {
+        DescribeRegionsResponse describeRegionsResultMock = mock(DescribeRegionsResponse.class);
+        Mockito.doReturn(Collections.singletonList(Region.builder().regionName(EC2Cloud.DEFAULT_EC2_HOST)
+                .build()))
                 .when(describeRegionsResultMock)
-                .getRegions();
+                .regions();
         Mockito.doReturn(describeRegionsResultMock).when(mock).describeRegions();
     }
 
-    private static void mockDescribeInstances(AmazonEC2Client mock) {
+    private static void mockDescribeInstances(Ec2Client mock) {
         Mockito.doCallRealMethod().when(mock).describeInstances(); // This will just pass on to
         // describeInstances(describeInstancesRequest)
         Mockito.doAnswer(invocationOnMock -> {
-                    DescribeInstancesRequest request = invocationOnMock.getArgument(0);
-                    if (request.getInstanceIds() != null
-                            && !request.getInstanceIds().isEmpty()) {
-                        return new DescribeInstancesResult()
-                                .withReservations(new Reservation()
-                                        .withInstances(instances.stream()
-                                                .filter(instance ->
-                                                        request.getInstanceIds().contains(instance.getInstanceId()))
-                                                .collect(Collectors.toList())));
-                    }
-                    return new DescribeInstancesResult().withReservations(new Reservation().withInstances(instances));
-                })
+            DescribeInstancesRequest request = invocationOnMock.getArgument(0);
+            if (request.instanceIds() != null
+                    && !request.instanceIds().isEmpty()) {
+                return  DescribeInstancesResponse.builder()
+                        .reservations(Reservation.builder()
+                                .instances(instances.stream()
+                                        .filter(instance ->
+                                                request.instanceIds().contains(instance.instanceId()))
+                                        .collect(Collectors.toList()))
+                                .build())
+                        .build();
+            }
+            return  DescribeInstancesResponse.builder().reservations(Reservation.builder().instances(instances)
+                    .build())
+                    .build();
+        })
                 .when(mock)
                 .describeInstances(Mockito.any(DescribeInstancesRequest.class));
     }
 
-    private static void mockDescribeSpotInstanceRequests(AmazonEC2Client mock) {
-        DescribeSpotInstanceRequestsResult describeSpotInstanceRequestsResult =
-                new DescribeSpotInstanceRequestsResult();
+    private static void mockDescribeSpotInstanceRequests(Ec2Client mock) {
+        DescribeSpotInstanceRequestsResponse.Builder describeSpotInstanceRequestsResultBuilder =
+                DescribeSpotInstanceRequestsResponse.builder();
         List<SpotInstanceRequest> spotInstanceRequests = new ArrayList<>();
         for (Instance instance : instances) {
-            SpotInstanceRequest spotInstanceRequest = new SpotInstanceRequest()
-                    .withInstanceId(instance.getInstanceId())
-                    .withTags(instance.getTags())
-                    .withState(SpotInstanceState.Active)
-                    .withType(SpotInstanceType.OneTime);
+            SpotInstanceRequest spotInstanceRequest = SpotInstanceRequest.builder()
+                    .instanceId(instance.instanceId())
+                    .tags(instance.tags())
+                    .state(SpotInstanceState.ACTIVE)
+                    .type(SpotInstanceType.ONE_TIME)
+                    .build();
             spotInstanceRequests.add(spotInstanceRequest);
         }
 
         Mockito.doAnswer(invocationOnMock -> {
-                    DescribeSpotInstanceRequestsRequest request = invocationOnMock.getArgument(0);
-                    int paginationSize = request.getMaxResults();
-                    if (paginationSize == 0) {
-                        paginationSize = instances.size();
-                    }
-                    if (instances.size() > paginationSize && request.getNextToken() == null) {
-                        describeSpotInstanceRequestsResult.setNextToken("token");
-                        describeSpotInstanceRequestsResult.setSpotInstanceRequests(
-                                spotInstanceRequests.subList(0, 100));
-                    } else if (instances.size() <= paginationSize) {
-                        describeSpotInstanceRequestsResult.setSpotInstanceRequests(spotInstanceRequests);
-                        describeSpotInstanceRequestsResult.setNextToken(null);
-                    } else {
-                        describeSpotInstanceRequestsResult.setSpotInstanceRequests(
-                                spotInstanceRequests.subList(100, spotInstanceRequests.size() - 1));
-                        describeSpotInstanceRequestsResult.setNextToken(null);
-                    }
-                    return describeSpotInstanceRequestsResult;
-                })
+            DescribeSpotInstanceRequestsRequest request = invocationOnMock.getArgument(0);
+            int paginationSize = request.maxResults();
+            if (paginationSize == 0) {
+                paginationSize = instances.size();
+            }
+            if (instances.size() > paginationSize && request.nextToken() == null) {
+                describeSpotInstanceRequestsResultBuilder.nextToken("token");
+                describeSpotInstanceRequestsResultBuilder.spotInstanceRequests(
+                        spotInstanceRequests.subList(0, 100));
+            } else if (instances.size() <= paginationSize) {
+                describeSpotInstanceRequestsResultBuilder.spotInstanceRequests(spotInstanceRequests);
+                describeSpotInstanceRequestsResultBuilder.nextToken(null);
+            } else {
+                describeSpotInstanceRequestsResultBuilder.spotInstanceRequests(
+                        spotInstanceRequests.subList(100, spotInstanceRequests.size() - 1));
+                describeSpotInstanceRequestsResultBuilder.nextToken(null);
+            }
+            return describeSpotInstanceRequestsResultBuilder.build();
+        })
                 .when(mock)
                 .describeSpotInstanceRequests(Mockito.any(DescribeSpotInstanceRequestsRequest.class));
     }
 
-    private static void mockDescribeImages(AmazonEC2Client mock) {
+    private static void mockDescribeImages(Ec2Client mock) {
         Mockito.doAnswer(invocationOnMock -> {
-                    DescribeImagesRequest request = invocationOnMock.getArgument(0);
-                    return new DescribeImagesResult()
-                            .withImages(request.getImageIds().stream()
-                                    .map(AmazonEC2FactoryMockImpl::createMockImage)
-                                    .collect(Collectors.toList()));
-                })
+            DescribeImagesRequest request = invocationOnMock.getArgument(0);
+            return  DescribeImagesResponse.builder()
+                    .images(request.imageIds().stream()
+                            .map(AmazonEC2FactoryMockImpl::createMockImage)
+                            .collect(Collectors.toList()))
+                    .build();
+        })
                 .when(mock)
                 .describeImages(Mockito.any(DescribeImagesRequest.class));
     }
 
     private static Image createMockImage(String amiId) {
-        return new Image()
-                .withImageId(amiId)
-                .withRootDeviceType("ebs")
-                .withBlockDeviceMappings(
-                        new BlockDeviceMapping().withDeviceName("/dev/null").withEbs(new EbsBlockDevice()));
+        return Image.builder()
+                .imageId(amiId)
+                .rootDeviceType("ebs")
+                .blockDeviceMappings(
+                        BlockDeviceMapping.builder().deviceName("/dev/null").ebs(EbsBlockDevice.builder()
+                                .build())
+                        .build())
+                .build();
     }
 
-    private static void mockDescribeKeyPairs(AmazonEC2Client mock) {
+    private static void mockDescribeKeyPairs(Ec2Client mock) {
         Mockito.doAnswer(invocationOnMock -> {
-                    KeyPairInfo keyPairInfo = new KeyPairInfo();
-                    keyPairInfo.setKeyFingerprint(Jenkins.get()
+            KeyPairInfo keyPairInfo = KeyPairInfo.builder()
+                    .keyFingerprint(Jenkins.get()
                             .clouds
                             .get(AmazonEC2Cloud.class)
                             .resolvePrivateKey()
-                            .getFingerprint());
-                    return new DescribeKeyPairsResult().withKeyPairs(keyPairInfo);
-                })
+                            .getFingerprint())
+                    .build();
+            return  DescribeKeyPairsResponse.builder().keyPairs(keyPairInfo)
+                    .build();
+        })
                 .when(mock)
                 .describeKeyPairs();
     }
 
-    private static void mockDescribeSecurityGroups(AmazonEC2Client mock) {
-        Mockito.doAnswer(invocationOnMock -> new DescribeSecurityGroupsResult()
-                        .withSecurityGroups(new SecurityGroup().withVpcId("whatever")))
+    private static void mockDescribeSecurityGroups(Ec2Client mock) {
+        Mockito.doAnswer(invocationOnMock ->  DescribeSecurityGroupsResponse.builder()
+                .securityGroups(SecurityGroup.builder().vpcId("whatever")
+                        .build())
+                .build())
                 .when(mock)
                 .describeSecurityGroups(Mockito.any(DescribeSecurityGroupsRequest.class));
     }
 
-    private static void mockDescribeSubnets(AmazonEC2Client mock) {
-        Mockito.doAnswer(invocationOnMock -> new DescribeSubnetsResult().withSubnets(new Subnet()))
+    private static void mockDescribeSubnets(Ec2Client mock) {
+        Mockito.doAnswer(invocationOnMock ->  DescribeSubnetsResponse.builder().subnets(Subnet.builder()
+                .build())
+                .build())
                 .when(mock)
                 .describeSubnets(Mockito.any(DescribeSubnetsRequest.class));
     }
 
-    private static void mockRunInstances(AmazonEC2Client mock) {
+    private static void mockRunInstances(Ec2Client mock) {
         Mockito.doAnswer(invocationOnMock -> {
-                    RunInstancesRequest request = invocationOnMock.getArgument(0);
-                    List<Tag> tags = request.getTagSpecifications().stream()
-                            .map(TagSpecification::getTags)
-                            .flatMap(List::stream)
-                            .collect(Collectors.toList());
+            RunInstancesRequest request = invocationOnMock.getArgument(0);
+            List<Tag> tags = request.tagSpecifications().stream()
+                    .map(TagSpecification::tags)
+                    .flatMap(List::stream)
+                    .collect(Collectors.toList());
 
-                    List<Instance> localInstances = new ArrayList<>();
+            List<Instance> localInstances = new ArrayList<>();
 
-                    for (int i = 0; i < request.getMaxCount(); i++) {
-                        Instance instance = new Instance()
-                                .withInstanceId(String.valueOf(Math.random()))
-                                .withInstanceType(request.getInstanceType())
-                                .withImageId(request.getImageId())
-                                .withTags(tags)
-                                .withState(new com.amazonaws.services.ec2.model.InstanceState()
-                                        .withName(InstanceStateName.Running))
-                                .withLaunchTime(new Date());
+            for (int i = 0; i < request.maxCount(); i++) {
+                Instance instance =  Instance.builder()
+                        .instanceId(String.valueOf(Math.random()))
+                        .instanceType(request.instanceType())
+                        .imageId(request.imageId())
+                        .tags(tags)
+                        .state(InstanceState.builder()
+                                .name(InstanceStateName.RUNNING)
+                                .build())
+                        .launchTime(Instant.now())
+                        .build();
 
-                        localInstances.add(instance);
-                    }
+                localInstances.add(instance);
+            }
 
-                    instances.addAll(localInstances);
+            instances.addAll(localInstances);
 
-                    return new RunInstancesResult().withReservation(new Reservation().withInstances(localInstances));
-                })
+            return  RunInstancesResponse.builder().reservationId(Reservation.builder().instances(localInstances)
+                    .build().reservationId())
+                    .build();
+        })
                 .when(mock)
                 .runInstances(Mockito.any(RunInstancesRequest.class));
     }
 
-    private static void mockTerminateInstances(AmazonEC2Client mock) {
+    private static void mockTerminateInstances(Ec2Client mock) {
         Mockito.doAnswer(invocationOnMock -> {
-                    TerminateInstancesRequest request = invocationOnMock.getArgument(0);
-                    List<Instance> instancesToRemove = new ArrayList<>();
-                    request.getInstanceIds().forEach(instanceId -> {
-                        instances.stream()
-                                .filter(instance -> instance.getInstanceId().equals(instanceId))
-                                .findFirst()
-                                .ifPresent(instancesToRemove::add);
-                    });
-                    instances.removeAll(instancesToRemove);
-                    return new TerminateInstancesResult()
-                            .withTerminatingInstances(instancesToRemove.stream()
-                                    .map(instance -> new InstanceStateChange()
-                                            .withInstanceId(instance.getInstanceId())
-                                            .withPreviousState(new InstanceState().withName(InstanceStateName.Stopping))
-                                            .withCurrentState(
-                                                    new InstanceState().withName(InstanceStateName.Terminated)))
-                                    .collect(Collectors.toList()));
-                })
+            TerminateInstancesRequest request = invocationOnMock.getArgument(0);
+            List<Instance> instancesToRemove = new ArrayList<>();
+            request.instanceIds().forEach(instanceId -> {
+                instances.stream()
+                        .filter(instance -> instance.instanceId().equals(instanceId))
+                        .findFirst()
+                        .ifPresent(instancesToRemove::add);
+            });
+            instances.removeAll(instancesToRemove);
+            return  TerminateInstancesResponse.builder()
+                    .terminatingInstances(instancesToRemove.stream()
+                            .map(instance ->  InstanceStateChange.builder()
+                                    .instanceId(instance.instanceId())
+                                    .previousState(InstanceState.builder().name(InstanceStateName.STOPPING)
+                                            .build())
+                                    .currentState(
+                                            InstanceState.builder().name(InstanceStateName.TERMINATED)
+                                            .build())
+                                    .build())
+                            .collect(Collectors.toList()))
+                    .build();
+        })
                 .when(mock)
                 .terminateInstances(Mockito.any(TerminateInstancesRequest.class));
     }
 
     @Override
-    public AmazonEC2 connect(AWSCredentialsProvider credentialsProvider, URL ec2Endpoint) {
+    public Ec2Client connect(AwsCredentialsProvider credentialsProvider, URI ec2Endpoint) {
         if (mock == null) {
             mock = createAmazonEC2Mock();
         }

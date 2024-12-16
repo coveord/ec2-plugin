@@ -25,9 +25,10 @@ package hudson.plugins.ec2;
 
 import static hudson.plugins.ec2.EC2Cloud.SSH_PRIVATE_KEY_FILEPATH;
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.services.ec2.AmazonEC2;
-import com.amazonaws.services.ec2.model.KeyPairInfo;
+import hudson.plugins.ec2.util.KeyPair;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.KeyPairInfo;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import hudson.util.Secret;
 import java.io.BufferedReader;
@@ -117,29 +118,28 @@ public class EC2PrivateKey {
     /**
      * Finds the {@link KeyPairInfo} that corresponds to this key in EC2.
      */
-    public com.amazonaws.services.ec2.model.KeyPair find(AmazonEC2 ec2) throws IOException, AmazonClientException {
+    public KeyPair find(Ec2Client ec2) throws IOException, SdkException {
         String fp = getFingerprint();
         String pfp = getPublicFingerprint();
-        for (KeyPairInfo kp : ec2.describeKeyPairs().getKeyPairs()) {
-            if (kp.getKeyFingerprint().equalsIgnoreCase(fp)) {
-                com.amazonaws.services.ec2.model.KeyPair keyPair = new com.amazonaws.services.ec2.model.KeyPair();
-                keyPair.setKeyName(kp.getKeyName());
-                keyPair.setKeyFingerprint(fp);
-                keyPair.setKeyMaterial(Secret.toString(privateKey));
-                return keyPair;
+        for (KeyPairInfo kp : ec2.describeKeyPairs().keyPairs()) {
+            if (kp.keyFingerprint().equalsIgnoreCase(fp)) {
+                return new KeyPair(
+                    software.amazon.awssdk.services.ec2.model.KeyPairInfo.builder().keyName(kp.keyName()).keyFingerprint(fp).build(),
+                    Secret.toString(privateKey)
+                );
+
             }
-            if (kp.getKeyFingerprint().equalsIgnoreCase(pfp)) {
-                com.amazonaws.services.ec2.model.KeyPair keyPair = new com.amazonaws.services.ec2.model.KeyPair();
-                keyPair.setKeyName(kp.getKeyName());
-                keyPair.setKeyFingerprint(pfp);
-                keyPair.setKeyMaterial(Secret.toString(privateKey));
-                return keyPair;
+            if (kp.keyFingerprint().equalsIgnoreCase(pfp)) {
+                return new KeyPair(
+                    software.amazon.awssdk.services.ec2.model.KeyPairInfo.builder().keyName(kp.keyName()).keyFingerprint(pfp).build(),
+                    Secret.toString(privateKey)
+                );
             }
         }
         return null;
     }
 
-    public String decryptWindowsPassword(String encodedPassword) throws AmazonClientException {
+    public String decryptWindowsPassword(String encodedPassword) throws SdkException {
         try {
             Cipher cipher = Cipher.getInstance("RSA/NONE/PKCS1Padding");
             cipher.init(
@@ -149,7 +149,7 @@ public class EC2PrivateKey {
             byte[] plainText = cipher.doFinal(cipherText);
             return new String(plainText, Charset.forName("ASCII"));
         } catch (Exception e) {
-            throw new AmazonClientException("Unable to decode password:\n" + e.toString());
+            throw SdkException.create("Unable to decode password:\n" + e.toString(), e);
         }
     }
 

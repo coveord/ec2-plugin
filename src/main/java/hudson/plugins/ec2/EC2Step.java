@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 package hudson.plugins.ec2;
-
-import com.amazonaws.services.ec2.model.Instance;
+import software.amazon.awssdk.services.ec2.model.Instance;
+import software.amazon.awssdk.services.ec2.model.InstanceType;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.TaskListener;

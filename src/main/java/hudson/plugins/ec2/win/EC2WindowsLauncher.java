@@ -1,9 +1,8 @@
 package hudson.plugins.ec2.win;
-
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.services.ec2.model.GetPasswordDataRequest;
-import com.amazonaws.services.ec2.model.GetPasswordDataResult;
-import com.amazonaws.services.ec2.model.Instance;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.ec2.model.GetPasswordDataRequest;
+import software.amazon.awssdk.services.ec2.model.GetPasswordDataResponse;
+import software.amazon.awssdk.services.ec2.model.Instance;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Util;
 import hudson.model.Descriptor;
@@ -20,6 +19,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLException;
 import jenkins.model.Jenkins;
@@ -32,7 +33,7 @@ public class EC2WindowsLauncher extends EC2ComputerLauncher {
 
     @Override
     protected void launchScript(EC2Computer computer, TaskListener listener)
-            throws IOException, AmazonClientException, InterruptedException {
+            throws IOException, SdkException, InterruptedException {
         final PrintStream logger = listener.getLogger();
         EC2AbstractSlave node = computer.getNode();
         if (node == null) {
@@ -123,25 +124,25 @@ public class EC2WindowsLauncher extends EC2ComputerLauncher {
     @NonNull
     private WinConnection connectToWinRM(
             EC2Computer computer, EC2AbstractSlave node, SlaveTemplate template, PrintStream logger)
-            throws AmazonClientException, InterruptedException {
+            throws SdkException, InterruptedException {
         final long minTimeout = 3000;
         long timeout = node.getLaunchTimeoutInMillis(); // timeout is less than 0 when jenkins is booting up.
         if (timeout < minTimeout) {
             timeout = minTimeout;
         }
-        final long startTime = System.currentTimeMillis();
+        final Instant startTime = Instant.now();
 
         logger.println(node.getDisplayName() + " booted at " + node.getCreatedTime());
-        boolean alreadyBooted = (startTime - node.getCreatedTime()) > TimeUnit.MINUTES.toMillis(3);
+        boolean alreadyBooted = node.getCreatedTime().until(startTime, ChronoUnit.MILLIS) > TimeUnit.MINUTES.toMillis(3);
         WinConnection connection = null;
         while (true) {
             boolean allowSelfSignedCertificate = node.isAllowSelfSignedCertificate();
 
             try {
-                long waitTime = System.currentTimeMillis() - startTime;
+                long waitTime = startTime.until(Instant.now(), ChronoUnit.MILLIS);
                 if (waitTime > timeout) {
-                    throw new AmazonClientException(
-                            "Timed out after " + (waitTime / 1000) + " seconds of waiting for winrm to be connected");
+                    throw SdkException.builder().message(
+                            "Timed out after " + (waitTime / 1000) + " seconds of waiting for winrm to be connected").build();
                 }
 
                 if (connection == null) {
@@ -156,17 +157,18 @@ public class EC2WindowsLauncher extends EC2ComputerLauncher {
                     }
 
                     if (!node.isSpecifyPassword()) {
-                        GetPasswordDataResult result;
+                        GetPasswordDataResponse result;
                         try {
                             result = node.getCloud()
                                     .connect()
-                                    .getPasswordData(new GetPasswordDataRequest(instance.getInstanceId()));
+                                    .getPasswordData(GetPasswordDataRequest.builder()
+                                            .build());
                         } catch (Exception e) {
                             logger.println("Unexpected Exception: " + e.toString());
                             Thread.sleep(sleepBetweenAttempts);
                             continue;
                         }
-                        String passwordData = result.getPasswordData();
+                        String passwordData = result.passwordData();
                         if (passwordData == null || passwordData.isEmpty()) {
                             logger.println("Waiting for password to be available. Sleeping 10s.");
                             Thread.sleep(sleepBetweenAttempts);
@@ -227,7 +229,7 @@ public class EC2WindowsLauncher extends EC2ComputerLauncher {
                     computer.setTemporarilyOffline(true, OfflineCause.create(Messages._OfflineCause_SSLException()));
                     // avoid waiting and trying again, this connection needs human intervention to change the
                     // certificate
-                    throw new AmazonClientException("The SSL connection failed while negotiating SSL", e);
+                    throw SdkException.create("The SSL connection failed while negotiating SSL", e);
                 }
                 logger.println("Waiting for WinRM to come up. Sleeping 10s.");
                 Thread.sleep(sleepBetweenAttempts);

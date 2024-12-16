@@ -28,11 +28,12 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.amazonaws.services.ec2.model.Instance;
-import com.amazonaws.services.ec2.model.Tag;
+import software.amazon.awssdk.services.ec2.model.Instance;
+import software.amazon.awssdk.services.ec2.model.Tag;
 import hudson.plugins.ec2.util.AmazonEC2FactoryMockImpl;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,9 +57,9 @@ public class AmazonEC2CloudUnitTest {
     public void testEC2EndpointURLCreation() throws MalformedURLException {
         AmazonEC2Cloud.DescriptorImpl descriptor = new AmazonEC2Cloud.DescriptorImpl();
 
-        assertEquals(new URL(DEFAULT_EC2_ENDPOINT), descriptor.determineEC2EndpointURL(null));
-        assertEquals(new URL(DEFAULT_EC2_ENDPOINT), descriptor.determineEC2EndpointURL(""));
-        assertEquals(new URL("https://www.abc.com"), descriptor.determineEC2EndpointURL("https://www.abc.com"));
+        assertEquals(URI.create(DEFAULT_EC2_ENDPOINT), descriptor.determineEC2EndpointURI(null));
+        assertEquals(URI.create(DEFAULT_EC2_ENDPOINT), descriptor.determineEC2EndpointURI(""));
+        assertEquals(URI.create("https://www.abc.com"), descriptor.determineEC2EndpointURI("https://www.abc.com"));
     }
 
     @Test
@@ -118,9 +119,11 @@ public class AmazonEC2CloudUnitTest {
 
             List<Instance> instances = new ArrayList<Instance>();
             for (int i = 0; i <= numberOfSpotInstanceRequests; i++) {
-                instances.add(new Instance()
-                        .withInstanceId("id" + i)
-                        .withTags(new Tag().withKey("jenkins_slave_type").withValue("spot")));
+                instances.add(Instance.builder()
+                        .instanceId("id" + i)
+                        .tags(Tag.builder().key("jenkins_slave_type").value("spot")
+                                .build())
+                        .build());
             }
 
             AmazonEC2FactoryMockImpl.instances = instances;
