@@ -36,7 +36,16 @@ import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.TaskListener;
-import hudson.plugins.ec2.*;
+import hudson.plugins.ec2.ConnectionStrategy;
+import hudson.plugins.ec2.EC2AbstractSlave;
+import hudson.plugins.ec2.EC2Cloud;
+import hudson.plugins.ec2.EC2Computer;
+import hudson.plugins.ec2.EC2ComputerLauncher;
+import hudson.plugins.ec2.EC2HostAddressProvider;
+import hudson.plugins.ec2.EC2PrivateKey;
+import hudson.plugins.ec2.EC2Readiness;
+import hudson.plugins.ec2.EC2SpotSlave;
+import hudson.plugins.ec2.SlaveTemplate;
 import hudson.plugins.ec2.ssh.verifiers.HostKey;
 import hudson.plugins.ec2.ssh.verifiers.HostKeyHelper;
 import hudson.plugins.ec2.ssh.verifiers.Messages;
@@ -206,10 +215,10 @@ public class EC2UnixLauncher extends EC2ComputerLauncher {
             conn.exec("mkdir -p " + tmpDir, logger);
 
             if (initScript != null
-                    && initScript.trim().length() > 0
+                    && !initScript.trim().isEmpty()
                     && conn.exec("test -e ~/.hudson-run-init", logger) != 0) {
                 logInfo(computer, listener, "Executing init script");
-                scp.put(initScript.getBytes("UTF-8"), "init.sh", tmpDir, "0700");
+                scp.put(initScript.getBytes(StandardCharsets.UTF_8), "init.sh", tmpDir, "0700");
                 Session sess = conn.openSession();
                 sess.requestDumbPTY(); // so that the remote side bundles stdout
                 // and stderr

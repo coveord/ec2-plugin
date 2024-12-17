@@ -38,7 +38,7 @@ import software.amazon.awssdk.services.ec2.model.InstanceType;
  */
 public class InstanceTypeConverter implements Converter {
 
-    private static final Map<String, InstanceType> TYPICAL_INSTANCE_TYPES = new HashMap<String, InstanceType>();
+    private static final Map<String, InstanceType> TYPICAL_INSTANCE_TYPES = new HashMap<>();
 
     static {
         TYPICAL_INSTANCE_TYPES.put("DEFAULT", InstanceType.M1_SMALL);

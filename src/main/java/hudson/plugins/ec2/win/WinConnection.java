@@ -106,7 +106,7 @@ public class WinConnection {
 
     private static String toAdministrativeShare(String path) {
         // administrative windows share are DRIVE$path like
-        return path.substring(0, 1) + "$";
+        return path.charAt(0) + "$";
     }
 
     private static String toFilePath(String path) {
@@ -127,7 +127,7 @@ public class WinConnection {
         LOGGER.log(Level.FINE, () -> "checking SMB connection to " + host);
         try (Socket socket = new Socket();
                 Connection connection = smbclient.connect(host);
-                Session session = connection.authenticate(authentication); ) {
+                Session session = connection.authenticate(authentication)) {
             socket.connect(new InetSocketAddress(host, 445), TIMEOUT);
             winrm().ping();
             session.connectShare("IPC$");

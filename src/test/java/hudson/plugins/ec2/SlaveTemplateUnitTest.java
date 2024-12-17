@@ -68,7 +68,7 @@ public class SlaveTemplateUnitTest {
 
         EC2Tag tag1 = new EC2Tag("name1", "value1");
         EC2Tag tag2 = new EC2Tag("name2", "value2");
-        List<EC2Tag> tags = new ArrayList<EC2Tag>();
+        List<EC2Tag> tags = new ArrayList<>();
         tags.add(tag1);
         tags.add(tag2);
         String instanceId = "123";
@@ -110,7 +110,7 @@ public class SlaveTemplateUnitTest {
                     }
                 };
 
-        ArrayList<Tag> awsTags = new ArrayList<Tag>();
+        ArrayList<Tag> awsTags = new ArrayList<>();
         awsTags.add(Tag.builder()
                 .build());
         awsTags.add(Tag.builder()
@@ -119,7 +119,7 @@ public class SlaveTemplateUnitTest {
         Method updateRemoteTags = SlaveTemplate.class.getDeclaredMethod(
                 "updateRemoteTags", Ec2Client.class, Collection.class, String.class, String[].class);
         updateRemoteTags.setAccessible(true);
-        final Object params[] = {ec2, awsTags, "InvalidInstanceRequestID.NotFound", new String[]{instanceId}};
+        final Object[] params = {ec2, awsTags, "InvalidInstanceRequestID.NotFound", new String[] {instanceId}};
         updateRemoteTags.invoke(orig, params);
         assertEquals(0, handler.getRecords().size());
     }
@@ -152,7 +152,7 @@ public class SlaveTemplateUnitTest {
 
         EC2Tag tag1 = new EC2Tag("name1", "value1");
         EC2Tag tag2 = new EC2Tag("name2", "value2");
-        List<EC2Tag> tags = new ArrayList<EC2Tag>();
+        List<EC2Tag> tags = new ArrayList<>();
         tags.add(tag1);
         tags.add(tag2);
         String instanceId = "123";
@@ -194,7 +194,7 @@ public class SlaveTemplateUnitTest {
                     }
                 };
 
-        ArrayList<Tag> awsTags = new ArrayList<Tag>();
+        ArrayList<Tag> awsTags = new ArrayList<>();
         awsTags.add(Tag.builder()
                 .build());
         awsTags.add(Tag.builder()
@@ -203,7 +203,7 @@ public class SlaveTemplateUnitTest {
         Method updateRemoteTags = SlaveTemplate.class.getDeclaredMethod(
                 "updateRemoteTags", Ec2Client.class, Collection.class, String.class, String[].class);
         updateRemoteTags.setAccessible(true);
-        final Object params[] = {ec2, awsTags, "InvalidSpotInstanceRequestID.NotFound", new String[]{instanceId}};
+        final Object[] params = {ec2, awsTags, "InvalidSpotInstanceRequestID.NotFound", new String[] {instanceId}};
         updateRemoteTags.invoke(orig, params);
 
         assertEquals(5, handler.getRecords().size());
@@ -488,15 +488,13 @@ public class SlaveTemplateUnitTest {
 
         Image image = Image.builder()
                 .rootDeviceType("ebs")
+                .blockDeviceMappings(BlockDeviceMapping.builder()
+                        .ebs(EbsBlockDevice.builder().build())
+                        .build())
                 .build();
-        BlockDeviceMapping blockDeviceMapping = BlockDeviceMapping.builder()
-                .ebs(EbsBlockDevice.builder().build())
-                .build();
-        image.blockDeviceMappings().add(blockDeviceMapping);
         if (rootVolumeEnum instanceof EbsEncryptRootVolume) {
             template.ebsEncryptRootVolume = rootVolumeEnum;
         }
-        ;
         Method setupRootDevice = SlaveTemplate.class.getDeclaredMethod("setupRootDevice", Image.class, List.class);
         setupRootDevice.setAccessible(true);
         setupRootDevice.invoke(template, image, deviceMappings);
@@ -738,7 +736,7 @@ public class SlaveTemplateUnitTest {
                 null,
                 true,
                 "");
-        assertEquals(true, st.getAssociatePublicIp());
+        assertTrue(st.getAssociatePublicIp());
     }
 
     @Test
@@ -1018,7 +1016,7 @@ public class SlaveTemplateUnitTest {
 }
 
 class TestHandler extends Handler {
-    private final List<LogRecord> records = new LinkedList<LogRecord>();
+    private final List<LogRecord> records = new LinkedList<>();
 
     @Override
     public void close() throws SecurityException {

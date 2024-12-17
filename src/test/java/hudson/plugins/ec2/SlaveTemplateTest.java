@@ -26,6 +26,7 @@ package hudson.plugins.ec2;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -68,7 +69,6 @@ public class SlaveTemplateTest {
     private final String TEST_SEC_GROUPS = "default";
     private final String TEST_REMOTE_FS = "foo";
     private final com.amazonaws.services.ec2.model.InstanceType V1_TEST_INSTANCE_TYPE = com.amazonaws.services.ec2.model.InstanceType.M1Large;
-    private final InstanceType TEST_INSTANCE_TYPE = InstanceType.M1_LARGE;
     private final boolean TEST_EBSO = false;
     private final String TEST_LABEL = "ttt";
 
@@ -137,7 +137,7 @@ public class SlaveTemplateTest {
         r.assertEqualBeans(
                 orig,
                 received,
-                "ami,zone,description,remoteFS,instanceType,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,tags,iamInstanceProfile,useEphemeralDevices,useDedicatedTenancy,connectionStrategy,hostKeyVerificationStrategy,tenancy,ebsEncryptRootVolume");
+                "ami,zone,description,remoteFS,type,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,tags,iamInstanceProfile,useEphemeralDevices,useDedicatedTenancy,connectionStrategy,hostKeyVerificationStrategy,tenancy,ebsEncryptRootVolume");
         // For already existing strategies, the default is this one
         assertEquals(HostKeyVerificationStrategyEnum.CHECK_NEW_SOFT, received.getHostKeyVerificationStrategy());
     }
@@ -201,7 +201,7 @@ public class SlaveTemplateTest {
         r.assertEqualBeans(
                 orig,
                 received,
-                "ami,zone,description,remoteFS,instanceType,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,useEphemeralDevices,useDedicatedTenancy,connectionStrategy,hostKeyVerificationStrategy");
+                "ami,zone,description,remoteFS,type,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,useEphemeralDevices,useDedicatedTenancy,connectionStrategy,hostKeyVerificationStrategy");
         assertEquals(STRATEGY_TO_CHECK, received.getHostKeyVerificationStrategy());
     }
 
@@ -262,7 +262,7 @@ public class SlaveTemplateTest {
         r.assertEqualBeans(
                 orig,
                 received,
-                "ami,zone,spotConfig,description,remoteFS,instanceType,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,tags,usePrivateDnsName");
+                "ami,zone,spotConfig,description,remoteFS,type,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,tags,usePrivateDnsName");
     }
 
     /**
@@ -319,7 +319,7 @@ public class SlaveTemplateTest {
         r.assertEqualBeans(
                 orig,
                 received,
-                "ami,zone,spotConfig,description,remoteFS,instanceType,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,tags,usePrivateDnsName");
+                "ami,zone,spotConfig,description,remoteFS,type,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,tags,usePrivateDnsName");
     }
 
     @Test
@@ -485,8 +485,8 @@ public class SlaveTemplateTest {
         Assert.assertNotNull(stored);
         Assert.assertEquals("11:00", stored.getMinimumNoInstancesActiveTimeRangeFrom());
         Assert.assertEquals("15:00", stored.getMinimumNoInstancesActiveTimeRangeTo());
-        Assert.assertEquals(false, stored.getDay("monday"));
-        Assert.assertEquals(true, stored.getDay("tuesday"));
+        Assert.assertFalse(stored.getDay("monday"));
+        Assert.assertTrue(stored.getDay("tuesday"));
     }
 
     @Test
@@ -856,7 +856,7 @@ public class SlaveTemplateTest {
 
         r.submit(getConfigForm(ac));
         SlaveTemplate received = ((EC2Cloud) r.jenkins.clouds.iterator().next()).getTemplate(description);
-        r.assertEqualBeans(orig, received, "instanceType,amiType");
+        r.assertEqualBeans(orig, received, "type,amiType");
     }
 
     @Issue("JENKINS-65569")
@@ -1013,7 +1013,7 @@ public class SlaveTemplateTest {
         r.assertEqualBeans(
                 orig,
                 received,
-                "ami,zone,description,remoteFS,instanceType,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,useEphemeralDevices,connectionStrategy,hostKeyVerificationStrategy,metadataEndpointEnabled,metadataTokensRequired,metadataHopsLimit");
+                "ami,zone,description,remoteFS,type,javaPath,jvmopts,stopOnTerminate,securityGroups,subnetId,useEphemeralDevices,connectionStrategy,hostKeyVerificationStrategy,metadataEndpointEnabled,metadataTokensRequired,metadataHopsLimit");
     }
 
     @Test
@@ -1073,7 +1073,7 @@ public class SlaveTemplateTest {
 
         RunInstancesRequest actualRequest = riRequestCaptor.getValue();
         InstanceMetadataOptionsRequest metadataOptionsRequest = actualRequest.metadataOptions();
-        assertEquals(metadataOptionsRequest, null);
+        assertNull(metadataOptionsRequest);
     }
 
     @Test

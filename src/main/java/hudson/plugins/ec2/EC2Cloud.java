@@ -18,28 +18,11 @@
  */
 package hudson.plugins.ec2;
 
-import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
-
 import hudson.plugins.ec2.util.KeyPair;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.auth.signer.Aws4Signer;
+import software.amazon.awssdk.auth.credentials.*;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
-import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.retry.RetryPolicy;
-import software.amazon.awssdk.http.apache.ApacheHttpClient;
-import software.amazon.awssdk.http.apache.ProxyConfiguration;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import com.cloudbees.jenkins.plugins.awscredentials.AWSCredentialsImpl;
 import com.cloudbees.jenkins.plugins.awscredentials.AmazonWebServicesCredentials;
 import com.cloudbees.jenkins.plugins.sshcredentials.SSHUserPrivateKey;
@@ -82,9 +65,18 @@ import java.io.PrintStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.*;
-import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.time.Instant;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -93,6 +85,7 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletResponse;
 
 import jenkins.model.Jenkins;
 import jenkins.model.JenkinsLocationConfiguration;
@@ -106,7 +99,18 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 import org.kohsuke.stapler.verb.POST;
+import software.amazon.awssdk.auth.signer.Aws4Signer;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.apache.ProxyConfiguration;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+
+import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 
 /**
  * Hudson's view of EC2.
@@ -265,7 +269,7 @@ public abstract class EC2Cloud extends Cloud {
         Optional<? extends SlaveTemplate> optionalOldTemplate = templates.stream()
                 .filter(template -> Objects.equals(template.description, oldTemplateDescription))
                 .findFirst();
-        if (!optionalOldTemplate.isPresent()) {
+        if (optionalOldTemplate.isEmpty()) {
             throw new Exception(
                     String.format("A SlaveTemplate with description %s does not exist", oldTemplateDescription));
         }
@@ -510,25 +514,26 @@ public abstract class EC2Cloud extends Cloud {
     public HttpResponse doProvision(@QueryParameter String template) throws ServletException, IOException {
         checkPermission(PROVISION);
         if (template == null) {
-            throw HttpResponses.error(SC_BAD_REQUEST, "The 'template' query parameter is missing");
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "The 'template' query parameter is missing");
         }
         SlaveTemplate t = getTemplate(template);
         if (t == null) {
-            throw HttpResponses.error(SC_BAD_REQUEST, "No such template: " + template);
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "No such template: " + template);
         }
 
         final Jenkins jenkinsInstance = Jenkins.get();
         if (jenkinsInstance.isQuietingDown()) {
-            throw HttpResponses.error(SC_BAD_REQUEST, "Jenkins instance is quieting down");
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Jenkins instance is quieting down");
         }
         if (jenkinsInstance.isTerminating()) {
-            throw HttpResponses.error(SC_BAD_REQUEST, "Jenkins instance is terminating");
+            throw HttpResponses.error(HttpServletResponse.SC_BAD_REQUEST, "Jenkins instance is terminating");
         }
         try {
             List<EC2AbstractSlave> nodes = getNewOrExistingAvailableSlave(t, 1, true);
             if (nodes == null || nodes.isEmpty()) {
                 throw HttpResponses.error(
-                        SC_BAD_REQUEST, "Cloud or AMI instance cap would be exceeded for: " + template);
+                        HttpServletResponse.SC_BAD_REQUEST,
+                        "Cloud or AMI instance cap would be exceeded for: " + template);
             }
 
             // Reconnect a stopped instance, the ADD is invoking the connect only for the node creation
@@ -981,7 +986,7 @@ public abstract class EC2Cloud extends Cloud {
             orphansOrStopped.remove(0);
         }
         attachSlavesToJenkins(jenkinsInstance, template.toSlaves(orphansOrStopped), template);
-        if (orphansOrStopped.size() > 0) {
+        if (!orphansOrStopped.isEmpty()) {
             LOGGER.info("Found and re-attached " + orphansOrStopped.size() + " orphan/stopped nodes");
         }
     }
@@ -989,7 +994,7 @@ public abstract class EC2Cloud extends Cloud {
     private PlannedNode createPlannedNode(final SlaveTemplate t, final EC2AbstractSlave slave) {
         return new PlannedNode(
                 t.getDisplayName(),
-                Computer.threadPoolForRemoting.submit(new Callable<Node>() {
+                Computer.threadPoolForRemoting.submit(new Callable<>() {
                     int retryCount = 0;
                     private static final int DESCRIBE_LIMIT = 2;
 
@@ -1111,7 +1116,7 @@ public abstract class EC2Cloud extends Cloud {
 
             StsClient stsClient = StsClient.builder()
                     .credentialsProvider(provider)
-                    .region(Region.of(region))
+                    .region(software.amazon.awssdk.regions.Region.of(region))
                     .httpClientBuilder(createApacheHttpClientBuilder(convertHostName(region)))
                     .overrideConfiguration(createOverrideClientConfiguration())
                     .build();
@@ -1127,7 +1132,7 @@ public abstract class EC2Cloud extends Cloud {
         if (StringUtils.isBlank(credentialsId)) {
             return null;
         }
-        return (AmazonWebServicesCredentials) CredentialsMatchers.firstOrNull(
+        return CredentialsMatchers.firstOrNull(
                 CredentialsProvider.lookupCredentials(
                         AmazonWebServicesCredentials.class, Jenkins.get(), ACL.SYSTEM, Collections.emptyList()),
                 CredentialsMatchers.withId(credentialsId));
@@ -1189,7 +1194,6 @@ public abstract class EC2Cloud extends Cloud {
         // cause problems. Raise it a bit.
         // See: https://issues.jenkins-ci.org/browse/JENKINS-26800
 
-
         return config;
     }
 
@@ -1210,7 +1214,7 @@ public abstract class EC2Cloud extends Cloud {
      * Convert a configured hostname like 'us-east-1' to a FQDN or ip address
      */
     public static String convertHostName(String ec2HostName) {
-        if (ec2HostName == null || ec2HostName.length() == 0) {
+        if (ec2HostName == null || ec2HostName.isEmpty()) {
             ec2HostName = DEFAULT_EC2_HOST;
         }
         if (!ec2HostName.contains(".")) {
@@ -1223,7 +1227,7 @@ public abstract class EC2Cloud extends Cloud {
      * Convert a user entered string into a port number "" -&gt; -1 to indicate default based on SSL setting
      */
     public static Integer convertPort(String ec2Port) {
-        if (ec2Port == null || ec2Port.length() == 0) {
+        if (ec2Port == null || ec2Port.isEmpty()) {
             return -1;
         }
         return Integer.parseInt(ec2Port);
@@ -1261,7 +1265,7 @@ public abstract class EC2Cloud extends Cloud {
 
     public abstract static class DescriptorImpl extends Descriptor<Cloud> {
 
-        public InstanceType[] getInstanceTypes() {
+        public InstanceType[] instanceTypes() {
             return InstanceType.values();
         }
 
@@ -1451,7 +1455,7 @@ public abstract class EC2Cloud extends Cloud {
                 Ec2Client ec2 = AmazonEC2Factory.getInstance().connect(credentialsProvider, ec2endpoint);
                 ec2.describeInstances();
 
-                if (privateKey.trim().length() > 0) {
+                if (!privateKey.trim().isEmpty()) {
                     // check if this key exists
                     EC2PrivateKey pk = new EC2PrivateKey(privateKey);
                     if (pk.find(ec2) == null) {

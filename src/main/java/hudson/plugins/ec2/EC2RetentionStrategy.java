@@ -164,7 +164,7 @@ public class EC2RetentionStrategy extends RetentionStrategy<EC2Computer> impleme
                             && (InstanceState.STOPPED.equals(state) || InstanceState.STOPPING.equals(state))) {
                 if (computer.isOnline()) {
                     LOGGER.info("External Stop of " + computer.getName() + " detected - disconnecting. instance status"
-                            + state.toString());
+                            + state);
                     computer.disconnect(null);
                 }
                 return CHECK_INTERVAL_MINUTES;
@@ -266,8 +266,7 @@ public class EC2RetentionStrategy extends RetentionStrategy<EC2Computer> impleme
         }
         final Label selfLabel = selfNode.getSelfLabel();
         Queue.Item[] items = Jenkins.getInstance().getQueue().getItems();
-        for (int i = 0; i < items.length; i++) {
-            Queue.Item item = items[i];
+        for (Queue.Item item : items) {
             final Label assignedLabel = item.getAssignedLabel();
             if (assignedLabel == selfLabel) {
                 LOGGER.fine("Preventing idle timeout of " + c.getName()
@@ -332,7 +331,6 @@ public class EC2RetentionStrategy extends RetentionStrategy<EC2Computer> impleme
                 if (maxTotalUses <= -1) {
                     LOGGER.fine("maxTotalUses set to unlimited (" + slaveNode.maxTotalUses + ") for agent "
                             + slaveNode.instanceId);
-                    return;
                 } else if (maxTotalUses <= 1) {
                     LOGGER.info("maxTotalUses drained - suspending agent " + slaveNode.instanceId);
                     computer.setAcceptingTasks(false);

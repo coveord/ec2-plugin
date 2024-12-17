@@ -768,7 +768,7 @@ public abstract class EC2AbstractSlave extends Slave {
     }
 
     public String getRemoteAdmin() {
-        if (remoteAdmin == null || remoteAdmin.length() == 0) {
+        if (remoteAdmin == null || remoteAdmin.isEmpty()) {
             return amiType.isWindows() ? "Administrator" : "root";
         }
         return remoteAdmin;
@@ -778,7 +778,7 @@ public abstract class EC2AbstractSlave extends Slave {
         String commandPrefix = (amiType.isUnix()
                 ? ((UnixData) amiType).getRootCommandPrefix()
                 : (amiType.isMac() ? ((MacData) amiType).getRootCommandPrefix() : ""));
-        if (commandPrefix == null || commandPrefix.length() == 0) {
+        if (commandPrefix == null || commandPrefix.isEmpty()) {
             return "";
         }
         return commandPrefix + " ";
@@ -788,7 +788,7 @@ public abstract class EC2AbstractSlave extends Slave {
         String commandPrefix = (amiType.isUnix()
                 ? ((UnixData) amiType).getSlaveCommandPrefix()
                 : (amiType.isMac() ? ((MacData) amiType).getSlaveCommandPrefix() : ""));
-        if (commandPrefix == null || commandPrefix.length() == 0) {
+        if (commandPrefix == null || commandPrefix.isEmpty()) {
             return "";
         }
         return commandPrefix + " ";
@@ -798,7 +798,7 @@ public abstract class EC2AbstractSlave extends Slave {
         String commandSuffix = (amiType.isUnix()
                 ? ((UnixData) amiType).getSlaveCommandSuffix()
                 : (amiType.isMac() ? ((MacData) amiType).getSlaveCommandSuffix() : ""));
-        if (commandSuffix == null || commandSuffix.length() == 0) {
+        if (commandSuffix == null || commandSuffix.isEmpty()) {
             return "";
         }
         return " " + commandSuffix;
@@ -816,7 +816,7 @@ public abstract class EC2AbstractSlave extends Slave {
         String sshPort = (amiType.isUnix()
                 ? ((UnixData) amiType).getSshPort()
                 : (amiType.isMac() ? ((MacData) amiType).getSshPort() : "22"));
-        if (sshPort == null || sshPort.length() == 0) {
+        if (sshPort == null || sshPort.isEmpty()) {
             return 22;
         }
 
@@ -899,7 +899,7 @@ public abstract class EC2AbstractSlave extends Slave {
          * when fetchLiveInstanceData() is called before pushLiveInstancedata().
          */
         if (!i.tags().isEmpty()) {
-            tags = new LinkedList<EC2Tag>();
+            tags = new LinkedList<>();
             for (Tag t : i.tags()) {
                 tags.add(new EC2Tag(t.key(), t.value()));
             }
@@ -921,7 +921,7 @@ public abstract class EC2AbstractSlave extends Slave {
 
         /* Now that we have our instance, we can clear the tags on it */
         if (!tags.isEmpty()) {
-            HashSet<Tag> instTags = new HashSet<Tag>();
+            HashSet<Tag> instTags = new HashSet<>();
 
             for (EC2Tag t : tags) {
                 instTags.add(Tag.builder()
@@ -951,7 +951,7 @@ public abstract class EC2AbstractSlave extends Slave {
 
         /* Now that we have our instance, we can set tags on it */
         if (inst != null && tags != null && !tags.isEmpty()) {
-            HashSet<Tag> instTags = new HashSet<Tag>();
+            HashSet<Tag> instTags = new HashSet<>();
 
             for (EC2Tag t : tags) {
                 instTags.add(Tag.builder()
@@ -986,6 +986,10 @@ public abstract class EC2AbstractSlave extends Slave {
     public String getPrivateDNS() {
         fetchLiveInstanceData(false);
         return privateDNS;
+    }
+
+    public InstanceType getType() {
+        return getInstanceType();
     }
 
     public InstanceType getInstanceType() {

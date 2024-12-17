@@ -79,7 +79,7 @@ public class CloudHelperTest {
                         AwsErrorDetails.builder().errorCode("InvalidInstanceID.NotFound").build()
                 ).build();
 
-        Answer<DescribeInstancesResponse> answerWithRetry = new Answer<DescribeInstancesResponse>() {
+        Answer<DescribeInstancesResponse> answerWithRetry = new Answer<>() {
             private boolean first = true;
 
             @Override

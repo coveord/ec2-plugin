@@ -8,7 +8,12 @@ import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.TaskListener;
 import hudson.os.WindowsUtil;
-import hudson.plugins.ec2.*;
+import hudson.plugins.ec2.EC2AbstractSlave;
+import hudson.plugins.ec2.EC2Computer;
+import hudson.plugins.ec2.EC2ComputerLauncher;
+import hudson.plugins.ec2.EC2HostAddressProvider;
+import hudson.plugins.ec2.EC2PrivateKey;
+import hudson.plugins.ec2.SlaveTemplate;
 import hudson.plugins.ec2.win.winrm.WindowsProcess;
 import hudson.remoting.Channel;
 import hudson.remoting.Channel.Listener;
@@ -49,7 +54,7 @@ public class EC2WindowsLauncher extends EC2ComputerLauncher {
 
         try {
             String initScript = node.initScript;
-            String tmpDir = (node.tmpDir != null && !node.tmpDir.equals("")
+            String tmpDir = (node.tmpDir != null && !node.tmpDir.isEmpty()
                     ? WindowsUtil.quoteArgument(Util.ensureEndsWith(node.tmpDir, "\\"))
                     : "C:\\Windows\\Temp\\");
 
@@ -61,10 +66,10 @@ public class EC2WindowsLauncher extends EC2ComputerLauncher {
                 return;
             }
 
-            if (initScript != null && initScript.trim().length() > 0 && !connection.exists(tmpDir + ".jenkins-init")) {
+            if (initScript != null && !initScript.trim().isEmpty() && !connection.exists(tmpDir + ".jenkins-init")) {
                 logger.println("Executing init script");
                 try (OutputStream init = connection.putFile(tmpDir + "init.bat")) {
-                    init.write(initScript.getBytes("utf-8"));
+                    init.write(initScript.getBytes(StandardCharsets.UTF_8));
                 }
 
                 WindowsProcess initProcess = connection.execute("cmd /c " + tmpDir + "init.bat");

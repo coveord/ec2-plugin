@@ -5,9 +5,9 @@ public enum Tenancy {
     Dedicated("dedicated"),
     Host("host");
 
-    private String value;
+    private final String value;
 
-    private Tenancy(String value) {
+    Tenancy(String value) {
         this.value = value;
     }
 
@@ -17,12 +17,8 @@ public enum Tenancy {
     }
 
     public static Tenancy fromValue(String value) {
-        if (value != null && !"".equals(value)) {
-            Tenancy[] var1 = values();
-            int var2 = var1.length;
-
-            for (int var3 = 0; var3 < var2; ++var3) {
-                Tenancy enumEntry = var1[var3];
+        if (value != null && !value.isEmpty()) {
+            for (Tenancy enumEntry : values()) {
                 if (enumEntry.toString().equals(value)) {
                     return enumEntry;
                 }

@@ -4,18 +4,16 @@ import static org.mockito.Mockito.mock;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
-import software.amazon.awssdk.services.ec2.Ec2Client;
+
 import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
 import hudson.plugins.ec2.AmazonEC2Cloud;
 import hudson.plugins.ec2.EC2Cloud;
 
 import java.net.URI;
-import java.net.URL;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
@@ -234,28 +232,24 @@ public class AmazonEC2FactoryMockImpl implements AmazonEC2Factory {
 
     private static void mockTerminateInstances(Ec2Client mock) {
         Mockito.doAnswer(invocationOnMock -> {
-            TerminateInstancesRequest request = invocationOnMock.getArgument(0);
-            List<Instance> instancesToRemove = new ArrayList<>();
-            request.instanceIds().forEach(instanceId -> {
-                instances.stream()
-                        .filter(instance -> instance.instanceId().equals(instanceId))
-                        .findFirst()
-                        .ifPresent(instancesToRemove::add);
-            });
-            instances.removeAll(instancesToRemove);
-            return  TerminateInstancesResponse.builder()
-                    .terminatingInstances(instancesToRemove.stream()
-                            .map(instance ->  InstanceStateChange.builder()
-                                    .instanceId(instance.instanceId())
-                                    .previousState(InstanceState.builder().name(InstanceStateName.STOPPING)
-                                            .build())
-                                    .currentState(
-                                            InstanceState.builder().name(InstanceStateName.TERMINATED)
-                                            .build())
-                                    .build())
-                            .collect(Collectors.toList()))
-                    .build();
-        })
+                    TerminateInstancesRequest request = invocationOnMock.getArgument(0);
+                    List<Instance> instancesToRemove = new ArrayList<>();
+                    request.instanceIds().forEach(instanceId -> instances.stream()
+                            .filter(instance -> instance.instanceId().equals(instanceId))
+                            .findFirst()
+                            .ifPresent(instancesToRemove::add));
+                    instances.removeAll(instancesToRemove);
+                    return TerminateInstancesResponse.builder()
+                            .terminatingInstances(instancesToRemove.stream()
+                                    .map(instance -> InstanceStateChange.builder()
+                                            .instanceId(instance.instanceId())
+                                            .previousState(InstanceState.builder().name(InstanceStateName.STOPPING).build())
+                                            .currentState(
+                                                    InstanceState.builder().name(InstanceStateName.TERMINATED).build())
+                                    )
+                                    .map(InstanceStateChange.Builder::build)
+                                    .collect(Collectors.toList()));
+                })
                 .when(mock)
                 .terminateInstances(Mockito.any(TerminateInstancesRequest.class));
     }

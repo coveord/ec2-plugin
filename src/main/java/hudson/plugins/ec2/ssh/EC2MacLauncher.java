@@ -22,29 +22,50 @@
  * THE SOFTWARE.
  */
 package hudson.plugins.ec2.ssh;
+
+import com.trilead.ssh2.Connection;
+import com.trilead.ssh2.HTTPProxyData;
+import com.trilead.ssh2.SCPClient;
+import com.trilead.ssh2.ServerHostKeyVerifier;
+import com.trilead.ssh2.Session;
 import hudson.plugins.ec2.util.KeyPair;
-import software.amazon.awssdk.core.exception.SdkException;
-import software.amazon.awssdk.services.ec2.model.Instance;
-import com.trilead.ssh2.*;
 import hudson.FilePath;
 import hudson.ProxyConfiguration;
 import hudson.Util;
 import hudson.model.Descriptor;
 import hudson.model.TaskListener;
-import hudson.plugins.ec2.*;
+import hudson.plugins.ec2.ConnectionStrategy;
+import hudson.plugins.ec2.EC2AbstractSlave;
+import hudson.plugins.ec2.EC2Cloud;
+import hudson.plugins.ec2.EC2Computer;
+import hudson.plugins.ec2.EC2ComputerLauncher;
+import hudson.plugins.ec2.EC2HostAddressProvider;
+import hudson.plugins.ec2.EC2PrivateKey;
+import hudson.plugins.ec2.EC2Readiness;
+import hudson.plugins.ec2.EC2SpotSlave;
+import hudson.plugins.ec2.SlaveTemplate;
 import hudson.plugins.ec2.ssh.verifiers.HostKey;
 import hudson.plugins.ec2.ssh.verifiers.Messages;
 import hudson.remoting.Channel;
 import hudson.remoting.Channel.Listener;
 import hudson.slaves.CommandLauncher;
 import hudson.slaves.ComputerLauncher;
-import java.io.*;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.ec2.model.Instance;
+import software.amazon.awssdk.services.ec2.model.InstanceType;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import jenkins.model.Jenkins;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
@@ -174,7 +195,7 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
                 KeyPair key = computer.getCloud().getKeyPair();
                 if (key == null
                         || !cleanupConn.authenticateWithPublicKey(
-                                computer.getRemoteAdmin(), key.getMaterial().toCharArray(), "")) {
+                        computer.getRemoteAdmin(), key.getMaterial().toCharArray(), "")) {
                     logWarning(computer, listener, "Authentication failed");
                     return; // failed to connect as root.
                 }
@@ -192,10 +213,10 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
             conn.exec("mkdir -p " + tmpDir, logger);
 
             if (initScript != null
-                    && initScript.trim().length() > 0
+                    && !initScript.trim().isEmpty()
                     && conn.exec("test -e ~/.hudson-run-init", logger) != 0) {
                 logInfo(computer, listener, "Executing init script");
-                scp.put(initScript.getBytes("UTF-8"), "init.sh", tmpDir, "0700");
+                scp.put(initScript.getBytes(StandardCharsets.UTF_8), "init.sh", tmpDir, "0700");
                 Session sess = conn.openSession();
                 sess.requestDumbPTY(); // so that the remote side bundles stdout
                 // and stderr
@@ -238,7 +259,7 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
             final String javaPath = node.javaPath;
             try {
                 Instance nodeInstance = computer.describeInstance();
-                if (nodeInstance.instanceType().equals("mac2.metal")) {
+                if (nodeInstance.instanceType() == InstanceType.MAC2_METAL) {
                     LOGGER.info("Running Command for mac2.metal");
                     executeRemote(
                             computer,
@@ -519,8 +540,8 @@ public class EC2MacLauncher extends EC2ComputerLauncher {
             SlaveTemplate template = computer.getSlaveTemplate();
             return template != null
                     && template.getHostKeyVerificationStrategy()
-                            .getStrategy()
-                            .verify(computer, new HostKey(serverHostKeyAlgorithm, serverHostKey), listener);
+                    .getStrategy()
+                    .verify(computer, new HostKey(serverHostKeyAlgorithm, serverHostKey), listener);
         }
     }
 

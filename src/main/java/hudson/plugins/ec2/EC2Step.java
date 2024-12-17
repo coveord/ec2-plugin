@@ -29,9 +29,17 @@ import hudson.Util;
 import hudson.model.TaskListener;
 import hudson.slaves.Cloud;
 import hudson.util.ListBoxModel;
-import java.util.*;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import jenkins.model.Jenkins;
-import org.jenkinsci.plugins.workflow.steps.*;
+import org.jenkinsci.plugins.workflow.steps.Step;
+import org.jenkinsci.plugins.workflow.steps.StepContext;
+import org.jenkinsci.plugins.workflow.steps.StepDescriptor;
+import org.jenkinsci.plugins.workflow.steps.StepExecution;
+import org.jenkinsci.plugins.workflow.steps.SynchronousNonBlockingStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.verb.POST;
@@ -109,7 +117,7 @@ public class EC2Step extends Step {
                     for (String labelList : template.labels.split(" ")) {
                         r.add(
                                 labelList + "  (AMI: " + template.getAmi() + ", REGION: " + ec2Cloud.getRegion()
-                                        + ", TYPE: " + template.instanceType.name() + ")",
+                                        + ", TYPE: " + template.type + ")",
                                 labelList);
                     }
                 }

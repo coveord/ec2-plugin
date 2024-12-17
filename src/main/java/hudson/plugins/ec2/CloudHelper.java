@@ -1,17 +1,6 @@
 package hudson.plugins.ec2;
 
-import static hudson.plugins.ec2.EC2Cloud.EC2_REQUEST_EXPIRED_ERROR_CODE;
-
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.exception.SdkException;
-import software.amazon.awssdk.services.ec2.Ec2Client;
-import software.amazon.awssdk.services.ec2.model.AvailabilityZone;
-import software.amazon.awssdk.services.ec2.model.DescribeAvailabilityZonesResponse;
-import software.amazon.awssdk.services.ec2.model.DescribeImagesRequest;
-import software.amazon.awssdk.services.ec2.model.DescribeInstancesRequest;
-import software.amazon.awssdk.services.ec2.model.Image;
-import software.amazon.awssdk.services.ec2.model.Instance;
-import software.amazon.awssdk.services.ec2.model.Reservation;
+import com.amazonaws.AmazonServiceException;
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 
 import java.util.ArrayList;
@@ -20,6 +9,10 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang.StringUtils;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.*;
 
 final class CloudHelper {
     private static final Logger LOGGER = Logger.getLogger(CloudHelper.class.getName());
@@ -34,7 +27,7 @@ final class CloudHelper {
                 return getInstance(instanceId, cloud);
             } catch (AwsServiceException e) {
                 if (e.awsErrorDetails().errorCode().equals("InvalidInstanceID.NotFound")
-                        || EC2_REQUEST_EXPIRED_ERROR_CODE.equals(e.awsErrorDetails().errorCode())) {
+                        || EC2Cloud.EC2_REQUEST_EXPIRED_ERROR_CODE.equals(e.awsErrorDetails().errorCode())) {
                     // retry in 5 seconds.
                     Thread.sleep(5000);
                     continue;

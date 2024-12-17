@@ -18,12 +18,6 @@
  */
 package hudson.plugins.ec2;
 
-import static hudson.plugins.ec2.EC2AbstractSlave.DEFAULT_JAVA_PATH;
-import static hudson.plugins.ec2.EC2AbstractSlave.DEFAULT_METADATA_ENDPOINT_ENABLED;
-import static hudson.plugins.ec2.EC2AbstractSlave.DEFAULT_METADATA_HOPS_LIMIT;
-import static hudson.plugins.ec2.EC2AbstractSlave.DEFAULT_METADATA_SUPPORTED;
-import static hudson.plugins.ec2.EC2AbstractSlave.DEFAULT_METADATA_TOKENS_REQUIRED;
-
 import hudson.plugins.ec2.util.*;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -114,7 +108,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
 
     public final String remoteFS;
 
-    public final InstanceType instanceType;
+    public final String type;
 
     public final boolean ebsOptimized;
 
@@ -248,7 +242,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            String instanceType,
+            String type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -305,7 +299,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         this.securityGroups = securityGroups;
         this.remoteFS = remoteFS;
         this.amiType = amiType;
-        this.instanceType = (new InstanceTypeCompat(instanceType)).getInstanceType();
+        this.type = (new InstanceTypeCompat(type)).getInstanceType().toString();
         this.ebsOptimized = ebsOptimized;
         this.labels = Util.fixNull(labelString);
         this.mode = mode != null ? mode : Node.Mode.NORMAL;
@@ -319,7 +313,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         if (StringUtils.isNotBlank(javaPath)) {
             this.javaPath = javaPath;
         } else {
-            this.javaPath = DEFAULT_JAVA_PATH;
+            this.javaPath = EC2AbstractSlave.DEFAULT_JAVA_PATH;
         }
 
         this.jvmopts = jvmopts;
@@ -365,15 +359,20 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 : HostKeyVerificationStrategyEnum.CHECK_NEW_SOFT;
         this.tenancy = tenancy != null ? tenancy : Tenancy.Default;
         this.ebsEncryptRootVolume = ebsEncryptRootVolume != null ? ebsEncryptRootVolume : EbsEncryptRootVolume.DEFAULT;
-        this.metadataSupported = metadataSupported != null ? metadataSupported : DEFAULT_METADATA_SUPPORTED;
-        this.metadataEndpointEnabled =
-                metadataEndpointEnabled != null ? metadataEndpointEnabled : DEFAULT_METADATA_ENDPOINT_ENABLED;
-        this.metadataTokensRequired =
-                metadataTokensRequired != null ? metadataTokensRequired : DEFAULT_METADATA_TOKENS_REQUIRED;
-        this.metadataHopsLimit = metadataHopsLimit != null ? metadataHopsLimit : DEFAULT_METADATA_HOPS_LIMIT;
+        this.metadataSupported =
+                metadataSupported != null ? metadataSupported : EC2AbstractSlave.DEFAULT_METADATA_SUPPORTED;
+        this.metadataEndpointEnabled = metadataEndpointEnabled != null
+                ? metadataEndpointEnabled
+                : EC2AbstractSlave.DEFAULT_METADATA_ENDPOINT_ENABLED;
+        this.metadataTokensRequired = metadataTokensRequired != null
+                ? metadataTokensRequired
+                : EC2AbstractSlave.DEFAULT_METADATA_TOKENS_REQUIRED;
+        this.metadataHopsLimit =
+                metadataHopsLimit != null ? metadataHopsLimit : EC2AbstractSlave.DEFAULT_METADATA_HOPS_LIMIT;
         readResolve(); // initialize
     }
 
+    @Deprecated
     public SlaveTemplate(
             String ami,
             String zone,
@@ -425,7 +424,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 spotConfig,
                 securityGroups,
                 remoteFS,
-                new InstanceTypeCompat(type).getInstanceType().toString(),
+                (new InstanceTypeCompat(type)).getInstanceType().toString(),
                 ebsOptimized,
                 labelString,
                 mode,
@@ -519,7 +518,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 spotConfig,
                 securityGroups,
                 remoteFS,
-                new InstanceTypeCompat(type).getInstanceType().toString(),
+                (new InstanceTypeCompat(type)).getInstanceType().toString(),
                 ebsOptimized,
                 labelString,
                 mode,
@@ -530,7 +529,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 numExecutors,
                 remoteAdmin,
                 amiType,
-                DEFAULT_JAVA_PATH,
+                EC2AbstractSlave.DEFAULT_JAVA_PATH,
                 jvmopts,
                 stopOnTerminate,
                 subnetId,
@@ -557,7 +556,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 metadataEndpointEnabled,
                 metadataTokensRequired,
                 metadataHopsLimit,
-                DEFAULT_METADATA_SUPPORTED);
+                EC2AbstractSlave.DEFAULT_METADATA_SUPPORTED);
     }
 
     @Deprecated
@@ -607,7 +606,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 spotConfig,
                 securityGroups,
                 remoteFS,
-                new InstanceTypeCompat(type).getInstanceType().toString(),
+                (new InstanceTypeCompat(type)).getInstanceType().toString(),
                 ebsOptimized,
                 labelString,
                 mode,
@@ -618,7 +617,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 numExecutors,
                 remoteAdmin,
                 amiType,
-                DEFAULT_JAVA_PATH,
+                EC2AbstractSlave.DEFAULT_JAVA_PATH,
                 jvmopts,
                 stopOnTerminate,
                 subnetId,
@@ -642,10 +641,10 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 hostKeyVerificationStrategy,
                 tenancy,
                 null,
-                DEFAULT_METADATA_ENDPOINT_ENABLED,
-                DEFAULT_METADATA_TOKENS_REQUIRED,
-                DEFAULT_METADATA_HOPS_LIMIT,
-                DEFAULT_METADATA_SUPPORTED);
+                EC2AbstractSlave.DEFAULT_METADATA_ENDPOINT_ENABLED,
+                EC2AbstractSlave.DEFAULT_METADATA_TOKENS_REQUIRED,
+                EC2AbstractSlave.DEFAULT_METADATA_HOPS_LIMIT,
+                EC2AbstractSlave.DEFAULT_METADATA_SUPPORTED);
     }
 
     @Deprecated
@@ -1504,7 +1503,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
     }
 
     public Set<String> parseSecurityGroups() {
-        if (securityGroups == null || "".equals(securityGroups.trim())) {
+        if (securityGroups == null || securityGroups.trim().isEmpty()) {
             return Collections.emptySet();
         } else {
             return new HashSet<>(Arrays.asList(securityGroups.split("\\s*,\\s*")));
@@ -1515,7 +1514,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         try {
             return Integer.parseInt(numExecutors);
         } catch (NumberFormatException e) {
-            return EC2AbstractSlave.toNumExecutors(instanceType);
+            return EC2AbstractSlave.toNumExecutors(getInstanceType());
         }
     }
 
@@ -1614,6 +1613,10 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
     @Deprecated
     public boolean isConnectUsingPublicIp() {
         return connectUsingPublicIp;
+    }
+
+    public InstanceType getInstanceType() {
+        return (new InstanceTypeCompat(this.type)).getInstanceType();
     }
 
     public List<EC2Tag> getTags() {
@@ -1864,7 +1867,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 .imageId(image.imageId())
                 .minCount(1)
                 .maxCount(number)
-                .instanceType(instanceType)
+                .instanceType(type)
                 .ebsOptimized(ebsOptimized)
                 .monitoring(RunInstancesMonitoringEnabled.builder().enabled(monitoring).build());
 
@@ -1887,7 +1890,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         List<Filter> diFilters = new ArrayList<>();
         diFilters.add(Filter.builder().values(imageId)
                 .build());
-        diFilters.add(Filter.builder().values(instanceType.toString())
+        diFilters.add(Filter.builder().values(type)
                 .build());
 
         KeyPair keyPair = getKeyPair(ec2);
@@ -2188,7 +2191,8 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         }
 
         // get the root device (only one expected in the blockmappings)
-        if (deviceMappings.isEmpty()) {
+        final List<BlockDeviceMapping> rootDeviceMappings = image.blockDeviceMappings();
+        if (rootDeviceMappings.isEmpty()) {
             LOGGER.warning("AMI missing block devices");
             return;
         }
@@ -2278,7 +2282,8 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         // Raise an exception if there were no search attributes.
         // This is legal but not what anyone wants - it will
         // launch random recently created public AMIs.
-        int numAttrs = Stream.of(imageIds, owners, users, filters).collect(Collectors.summingInt(List::size));
+        int numAttrs =
+                Stream.of(imageIds, owners, users, filters).mapToInt(List::size).sum();
         if (numAttrs == 0) {
             throw SdkException.builder().message("Neither AMI ID nor AMI search attributes provided").build();
         }
@@ -2343,7 +2348,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             RequestSpotLaunchSpecification.Builder launchSpecificationBuilder = RequestSpotLaunchSpecification.builder();
 
             launchSpecificationBuilder.imageId(imageId);
-            launchSpecificationBuilder.instanceType(instanceType);
+            launchSpecificationBuilder.instanceType(type);
             launchSpecificationBuilder.ebsOptimized(ebsOptimized);
             launchSpecificationBuilder.monitoring(RunInstancesMonitoringEnabled.builder().enabled(monitoring).build());
 
@@ -2382,7 +2387,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
 
             launchSpecificationBuilder.userData(userDataString);
             launchSpecificationBuilder.keyName(keyPair.getKeyPairInfo().keyName());
-            launchSpecificationBuilder.instanceType(instanceType.toString());
+            launchSpecificationBuilder.instanceType(type);
 
             netBuilder.associatePublicIpAddress(getAssociatePublicIp());
             netBuilder.deviceIndex(0);
@@ -2779,7 +2784,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             metadataHopsLimit = EC2AbstractSlave.DEFAULT_METADATA_HOPS_LIMIT;
         }
         if (StringUtils.isBlank(javaPath)) {
-            javaPath = DEFAULT_JAVA_PATH;
+            javaPath = EC2AbstractSlave.DEFAULT_JAVA_PATH;
         }
 
         return this;
@@ -2916,6 +2921,14 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             } catch (Failure e) {
                 return FormValidation.error(e.getMessage());
             }
+        }
+
+        @POST
+        public FormValidation doValidateType(@QueryParameter String value) {
+            if ((new InstanceTypeCompat(value)).getInstanceType() == InstanceType.UNKNOWN_TO_SDK_VERSION) {
+                return FormValidation.error("Instance type unknown to sdk version");
+            }
+            return FormValidation.ok();
         }
 
         /***
@@ -3173,6 +3186,19 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
 
         public List<NodePropertyDescriptor> getNodePropertyDescriptors() {
             return NodePropertyDescriptor.for_(NodeProperty.all(), EC2AbstractSlave.class);
+        }
+
+        @POST
+        public ListBoxModel doFillTypeItems(@QueryParameter String type) {
+            ListBoxModel items = new ListBoxModel();
+
+            List<String> knownValues = InstanceType.knownValues().stream().map(InstanceType::toString).sorted().collect(Collectors.toList());
+
+            for (String value: knownValues) {
+                items.add(value, value);
+            }
+
+            return items;
         }
 
         @POST

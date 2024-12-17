@@ -1,26 +1,28 @@
 package hudson.plugins.ec2;
 
-import static hudson.Functions.checkPermission;
 
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.services.ec2.Ec2Client;
-import software.amazon.awssdk.services.ec2.model.*;
 import hudson.Extension;
+import hudson.Functions;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.plugins.ec2.util.AmazonEC2Factory;
 import hudson.util.FormValidation;
+
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
 import javax.servlet.ServletException;
+
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.interceptor.RequirePOST;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.*;
 
 public final class SpotConfiguration extends AbstractDescribableImpl<SpotConfiguration> {
     public final boolean useBidPrice;
@@ -86,8 +88,7 @@ public final class SpotConfiguration extends AbstractDescribableImpl<SpotConfigu
 
         String normalizedBid = normalizeBid(this.spotMaxBidPrice);
         String otherNormalizedBid = normalizeBid(config.spotMaxBidPrice);
-        boolean normalizedBidsAreEqual =
-                normalizedBid == null ? (otherNormalizedBid == null) : normalizedBid.equals(otherNormalizedBid);
+        boolean normalizedBidsAreEqual = Objects.equals(normalizedBid, otherNormalizedBid);
         boolean blockReservationIsEqual = true;
         if (this.spotBlockReservationDuration != config.spotBlockReservationDuration) {
             blockReservationIsEqual = false;
@@ -147,7 +148,7 @@ public final class SpotConfiguration extends AbstractDescribableImpl<SpotConfigu
                 @QueryParameter String ami)
                 throws IOException, ServletException {
 
-            checkPermission(EC2Cloud.PROVISION);
+            Functions.checkPermission(EC2Cloud.PROVISION);
 
             String cp = "";
             String zoneStr = "";

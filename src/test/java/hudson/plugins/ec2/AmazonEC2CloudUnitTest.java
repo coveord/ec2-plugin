@@ -117,7 +117,7 @@ public class AmazonEC2CloudUnitTest {
             when(spotSlaveMock.getSpotRequest()).thenReturn(null);
             when(spotSlaveMock.getSpotInstanceRequestId()).thenReturn("sir-id");
 
-            List<Instance> instances = new ArrayList<Instance>();
+            List<Instance> instances = new ArrayList<>();
             for (int i = 0; i <= numberOfSpotInstanceRequests; i++) {
                 instances.add(Instance.builder()
                         .instanceId("id" + i)
