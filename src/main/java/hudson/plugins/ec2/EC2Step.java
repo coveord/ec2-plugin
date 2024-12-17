@@ -109,7 +109,7 @@ public class EC2Step extends Step {
                     for (String labelList : template.labels.split(" ")) {
                         r.add(
                                 labelList + "  (AMI: " + template.getAmi() + ", REGION: " + ec2Cloud.getRegion()
-                                        + ", TYPE: " + template.type.name() + ")",
+                                        + ", TYPE: " + template.instanceType.name() + ")",
                                 labelList);
                     }
                 }

@@ -412,7 +412,7 @@ public class SshHostKeyVerificationStrategyTest {
                     null,
                     "default",
                     "foo",
-                    InstanceType.M1_LARGE,
+                    com.amazonaws.services.ec2.model.InstanceType.M1Large,
                     false,
                     "ttt",
                     Node.Mode.NORMAL,

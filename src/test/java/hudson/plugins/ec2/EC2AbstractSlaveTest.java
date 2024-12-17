@@ -80,7 +80,7 @@ public class EC2AbstractSlaveTest {
                 null,
                 "default",
                 "foo",
-                InstanceType.M1_LARGE,
+                InstanceType.M1_LARGE.toString(),
                 false,
                 "ttt",
                 Node.Mode.NORMAL,

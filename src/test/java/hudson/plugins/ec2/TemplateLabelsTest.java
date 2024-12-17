@@ -61,7 +61,7 @@ public class TemplateLabelsTest {
                 null,
                 "default",
                 "zone",
-                InstanceType.M1_LARGE,
+                com.amazonaws.services.ec2.model.InstanceType.M1Large,
                 false,
                 label,
                 mode,

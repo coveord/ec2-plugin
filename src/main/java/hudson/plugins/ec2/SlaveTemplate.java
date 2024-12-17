@@ -58,7 +58,6 @@ import hudson.util.Secret;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URI;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -115,7 +114,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
 
     public final String remoteFS;
 
-    public final InstanceType type;
+    public final InstanceType instanceType;
 
     public final boolean ebsOptimized;
 
@@ -249,7 +248,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            String instanceType,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -306,7 +305,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         this.securityGroups = securityGroups;
         this.remoteFS = remoteFS;
         this.amiType = amiType;
-        this.type = type;
+        this.instanceType = (new InstanceTypeCompat(instanceType)).getInstanceType();
         this.ebsOptimized = ebsOptimized;
         this.labels = Util.fixNull(labelString);
         this.mode = mode != null ? mode : Node.Mode.NORMAL;
@@ -375,6 +374,99 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         readResolve(); // initialize
     }
 
+    public SlaveTemplate(
+            String ami,
+            String zone,
+            SpotConfiguration spotConfig,
+            String securityGroups,
+            String remoteFS,
+            com.amazonaws.services.ec2.model.InstanceType type,
+            boolean ebsOptimized,
+            String labelString,
+            Node.Mode mode,
+            String description,
+            String initScript,
+            String tmpDir,
+            String userData,
+            String numExecutors,
+            String remoteAdmin,
+            AMITypeData amiType,
+            String javaPath,
+            String jvmopts,
+            boolean stopOnTerminate,
+            String subnetId,
+            List<EC2Tag> tags,
+            String idleTerminationMinutes,
+            int minimumNumberOfInstances,
+            int minimumNumberOfSpareInstances,
+            String instanceCapStr,
+            String iamInstanceProfile,
+            boolean deleteRootOnTermination,
+            boolean useEphemeralDevices,
+            String launchTimeoutStr,
+            boolean associatePublicIp,
+            String customDeviceMapping,
+            boolean connectBySSHProcess,
+            boolean monitoring,
+            boolean t2Unlimited,
+            ConnectionStrategy connectionStrategy,
+            int maxTotalUses,
+            List<? extends NodeProperty<?>> nodeProperties,
+            HostKeyVerificationStrategyEnum hostKeyVerificationStrategy,
+            Tenancy tenancy,
+            EbsEncryptRootVolume ebsEncryptRootVolume,
+            Boolean metadataEndpointEnabled,
+            Boolean metadataTokensRequired,
+            Integer metadataHopsLimit,
+            Boolean metadataSupported) {
+        this(
+                ami,
+                zone,
+                spotConfig,
+                securityGroups,
+                remoteFS,
+                new InstanceTypeCompat(type).getInstanceType().toString(),
+                ebsOptimized,
+                labelString,
+                mode,
+                description,
+                initScript,
+                tmpDir,
+                userData,
+                numExecutors,
+                remoteAdmin,
+                amiType,
+                javaPath,
+                jvmopts,
+                stopOnTerminate,
+                subnetId,
+                tags,
+                idleTerminationMinutes,
+                minimumNumberOfInstances,
+                minimumNumberOfSpareInstances,
+                instanceCapStr,
+                iamInstanceProfile,
+                deleteRootOnTermination,
+                useEphemeralDevices,
+                launchTimeoutStr,
+                associatePublicIp,
+                customDeviceMapping,
+                connectBySSHProcess,
+                monitoring,
+                t2Unlimited,
+                connectionStrategy,
+                maxTotalUses,
+                nodeProperties,
+                hostKeyVerificationStrategy,
+                tenancy,
+                ebsEncryptRootVolume,
+                metadataEndpointEnabled,
+                metadataTokensRequired,
+                metadataHopsLimit,
+                metadataSupported
+        );
+    }
+
     @Deprecated
     public SlaveTemplate(
             String ami,
@@ -382,7 +474,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -427,7 +519,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 spotConfig,
                 securityGroups,
                 remoteFS,
-                type,
+                new InstanceTypeCompat(type).getInstanceType().toString(),
                 ebsOptimized,
                 labelString,
                 mode,
@@ -475,7 +567,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -515,7 +607,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 spotConfig,
                 securityGroups,
                 remoteFS,
-                type,
+                new InstanceTypeCompat(type).getInstanceType().toString(),
                 ebsOptimized,
                 labelString,
                 mode,
@@ -563,7 +655,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -645,7 +737,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -726,7 +818,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -806,7 +898,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -884,7 +976,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -960,7 +1052,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -1034,7 +1126,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -1107,7 +1199,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -1178,7 +1270,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -1245,7 +1337,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             SpotConfiguration spotConfig,
             String securityGroups,
             String remoteFS,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -1312,7 +1404,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             String securityGroups,
             String remoteFS,
             String sshPort,
-            InstanceType type,
+            com.amazonaws.services.ec2.model.InstanceType type,
             boolean ebsOptimized,
             String labelString,
             Node.Mode mode,
@@ -1423,7 +1515,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         try {
             return Integer.parseInt(numExecutors);
         } catch (NumberFormatException e) {
-            return EC2AbstractSlave.toNumExecutors(type);
+            return EC2AbstractSlave.toNumExecutors(instanceType);
         }
     }
 
@@ -1772,7 +1864,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 .imageId(image.imageId())
                 .minCount(1)
                 .maxCount(number)
-                .instanceType(type)
+                .instanceType(instanceType)
                 .ebsOptimized(ebsOptimized)
                 .monitoring(RunInstancesMonitoringEnabled.builder().enabled(monitoring).build());
 
@@ -1795,7 +1887,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         List<Filter> diFilters = new ArrayList<>();
         diFilters.add(Filter.builder().values(imageId)
                 .build());
-        diFilters.add(Filter.builder().values(type.toString())
+        diFilters.add(Filter.builder().values(instanceType.toString())
                 .build());
 
         KeyPair keyPair = getKeyPair(ec2);
@@ -2087,7 +2179,11 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
     }
 
     private void setupRootDevice(Image image, List<BlockDeviceMapping> deviceMappings) {
-        if (!"ebs".equals(image.rootDeviceType().name())) {
+        DeviceType rootDevice = image.rootDeviceType();
+        if (rootDevice == null) {
+            return;
+        }
+        if (!"ebs".equals(rootDevice.name())) {
             return;
         }
 
@@ -2206,8 +2302,9 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         }
 
         // Sort in reverse by creation date to get latest image
-        images.sort(Comparator.comparing(Image::creationDate).reversed());
-        return images.get(0);
+        List<Image> modifiableImages = new ArrayList<>(images);
+        modifiableImages.sort(Comparator.comparing(Image::creationDate).reversed());
+        return modifiableImages.get(0);
     }
 
     private void setupCustomDeviceMapping(List<BlockDeviceMapping> deviceMappings) {
@@ -2246,7 +2343,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             RequestSpotLaunchSpecification.Builder launchSpecificationBuilder = RequestSpotLaunchSpecification.builder();
 
             launchSpecificationBuilder.imageId(imageId);
-            launchSpecificationBuilder.instanceType(type);
+            launchSpecificationBuilder.instanceType(instanceType);
             launchSpecificationBuilder.ebsOptimized(ebsOptimized);
             launchSpecificationBuilder.monitoring(RunInstancesMonitoringEnabled.builder().enabled(monitoring).build());
 
@@ -2285,7 +2382,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
 
             launchSpecificationBuilder.userData(userDataString);
             launchSpecificationBuilder.keyName(keyPair.getKeyPairInfo().keyName());
-            launchSpecificationBuilder.instanceType(type.toString());
+            launchSpecificationBuilder.instanceType(instanceType.toString());
 
             netBuilder.associatePublicIpAddress(getAssociatePublicIp());
             netBuilder.deviceIndex(0);
