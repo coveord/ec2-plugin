@@ -23,7 +23,6 @@
  */
 package hudson.plugins.ec2;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import hudson.Extension;
 import hudson.Util;
 import hudson.model.Failure;
@@ -36,7 +35,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 import java.util.Locale;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
@@ -50,7 +48,6 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.DescribeRegionsResponse;
-import software.amazon.awssdk.services.ec2.model.Region;
 
 /**
  * The original implementation of {@link EC2Cloud}.
@@ -125,6 +122,7 @@ public class AmazonEC2Cloud extends EC2Cloud {
         return name;
     }
 
+    @Override
     public String getRegion() {
         if (region == null) {
             region = DEFAULT_EC2_HOST; // Backward compatibility
@@ -231,11 +229,11 @@ public class AmazonEC2Cloud extends EC2Cloud {
                 try {
                     AwsCredentialsProvider credentialsProvider =
                             createCredentialsProvider(useInstanceProfileForCredentials, credentialsId);
-                    Ec2Client client = AmazonEC2Factory.getInstance()
-                            .connect(credentialsProvider, determineEC2EndpointURL(altEC2Endpoint));
+                    Ec2Client client =
+                            AmazonEC2Factory.getInstance().connect(credentialsProvider, altEC2Endpoint, null);
                     DescribeRegionsResponse regions = client.describeRegions();
-                    List<Region> regionList = regions.regions();
-                    for (Region r : regionList) {
+                    List<software.amazon.awssdk.services.ec2.model.Region> regionList = regions.regions();
+                    for (software.amazon.awssdk.services.ec2.model.Region r : regionList) {
                         String name = r.regionName();
                         model.add(name, name);
                     }
@@ -244,24 +242,6 @@ public class AmazonEC2Cloud extends EC2Cloud {
                 }
             }
             return model;
-        }
-
-        // Will use the alternate EC2 endpoint if provided by the UI (via a @QueryParameter field), or use the default
-        // value if not specified.
-        // VisibleForTesting
-        URL determineEC2EndpointURL(@Nullable String altEC2Endpoint) throws MalformedURLException {
-            if (Util.fixEmpty(altEC2Endpoint) == null) {
-                return new URL(DEFAULT_EC2_ENDPOINT);
-            }
-            try {
-                return new URL(altEC2Endpoint);
-            } catch (MalformedURLException e) {
-                LOGGER.log(
-                        Level.WARNING,
-                        "The alternate EC2 endpoint is malformed ({0}). Using the default endpoint ({1})",
-                        new Object[] {altEC2Endpoint, DEFAULT_EC2_ENDPOINT});
-                return new URL(DEFAULT_EC2_ENDPOINT);
-            }
         }
 
         @RequirePOST

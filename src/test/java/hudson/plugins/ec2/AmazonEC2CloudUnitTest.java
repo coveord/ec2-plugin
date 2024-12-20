@@ -27,6 +27,8 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import hudson.plugins.ec2.util.AmazonEC2Factory;
+import hudson.plugins.ec2.util.AmazonEC2FactoryImpl;
 import hudson.plugins.ec2.util.AmazonEC2FactoryMockImpl;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -42,6 +44,7 @@ import org.junit.runner.RunWith;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.model.Instance;
 import software.amazon.awssdk.services.ec2.model.Tag;
 
@@ -53,11 +56,15 @@ public class AmazonEC2CloudUnitTest {
 
     @Test
     public void testEC2EndpointURLCreation() throws MalformedURLException {
-        AmazonEC2Cloud.DescriptorImpl descriptor = new AmazonEC2Cloud.DescriptorImpl();
-
-        assertEquals(new URL(EC2Cloud.DEFAULT_EC2_ENDPOINT), descriptor.determineEC2EndpointURL(null));
-        assertEquals(new URL(EC2Cloud.DEFAULT_EC2_ENDPOINT), descriptor.determineEC2EndpointURL(""));
-        assertEquals(new URL("https://www.abc.com"), descriptor.determineEC2EndpointURL("https://www.abc.com"));
+        assertEquals(
+                new URL(AmazonEC2Factory.DEFAULT_EC2_ENDPOINT),
+                AmazonEC2FactoryImpl.determineEC2EndpointURL(null, null));
+        assertEquals(
+                new URL("https://ec2.us-east-1.amazonaws.com"),
+                AmazonEC2FactoryImpl.determineEC2EndpointURL(null, Region.US_EAST_1));
+        assertEquals(
+                new URL("https://www.abc.com"),
+                AmazonEC2FactoryImpl.determineEC2EndpointURL(new URL("https://www.abc.com"), null));
     }
 
     @Test

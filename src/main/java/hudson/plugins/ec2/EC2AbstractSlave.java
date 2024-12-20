@@ -37,6 +37,7 @@ import hudson.slaves.RetentionStrategy;
 import hudson.util.ListBoxModel;
 import hudson.util.Secret;
 import java.io.IOException;
+import java.net.URL;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1049,8 +1050,7 @@ public abstract class EC2AbstractSlave extends Slave {
         ListBoxModel model = new ListBoxModel();
 
         if (!StringUtils.isEmpty(region)) {
-            Ec2Client client = AmazonEC2Factory.getInstance()
-                    .connect(credentialsProvider, AmazonEC2Cloud.getEc2EndpointUrl(region));
+            Ec2Client client = AmazonEC2Factory.getInstance().connect(credentialsProvider, (URL) null, region);
             DescribeAvailabilityZonesResponse zones = client.describeAvailabilityZones();
             List<AvailabilityZone> zoneList = zones.availabilityZones();
             model.add("<not specified>", "");

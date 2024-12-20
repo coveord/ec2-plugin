@@ -7,6 +7,7 @@ import hudson.model.Descriptor;
 import hudson.plugins.ec2.util.AmazonEC2Factory;
 import hudson.util.FormValidation;
 import java.io.IOException;
+import java.net.URL;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -159,8 +160,7 @@ public final class SpotConfiguration extends AbstractDescribableImpl<SpotConfigu
             // region queried from the created cloud
             AwsCredentialsProvider credentialsProvider = EC2Cloud.createCredentialsProvider(
                     useInstanceProfileForCredentials, credentialsId, roleArn, roleSessionName, region);
-            Ec2Client ec2 = AmazonEC2Factory.getInstance()
-                    .connect(credentialsProvider, AmazonEC2Cloud.getEc2EndpointUrl(region));
+            Ec2Client ec2 = AmazonEC2Factory.getInstance().connect(credentialsProvider, (URL) null, region);
 
             if (ec2 != null) {
 

@@ -3044,12 +3044,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             AwsCredentialsProvider credentialsProvider = EC2Cloud.createCredentialsProvider(
                     useInstanceProfileForCredentials, credentialsId, roleArn, roleSessionName, region);
             Ec2Client ec2;
-            if (region != null) {
-                ec2 = AmazonEC2Factory.getInstance()
-                        .connect(credentialsProvider, AmazonEC2Cloud.getEc2EndpointUrl(region));
-            } else {
-                ec2 = AmazonEC2Factory.getInstance().connect(credentialsProvider, new URL(ec2endpoint));
-            }
+            ec2 = AmazonEC2Factory.getInstance().connect(credentialsProvider, (URL) null, region);
             try {
                 Image img = CloudHelper.getAmiImage(ec2, ami);
                 if (img == null) {

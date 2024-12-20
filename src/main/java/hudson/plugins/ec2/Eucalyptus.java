@@ -125,6 +125,11 @@ public class Eucalyptus extends EC2Cloud {
     }
 
     @Override
+    public String getRegion() {
+        return DEFAULT_EC2_HOST; // TODO: Can this value be found somewhere?
+    }
+
+    @Override
     public URL getEc2EndpointUrl() throws IOException {
         return this.ec2endpoint;
     }

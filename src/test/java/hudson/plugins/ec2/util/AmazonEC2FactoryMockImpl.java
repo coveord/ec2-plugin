@@ -294,10 +294,16 @@ public class AmazonEC2FactoryMockImpl implements AmazonEC2Factory {
     }
 
     @Override
-    public Ec2Client connect(AwsCredentialsProvider credentialsProvider, URL ec2Endpoint) {
+    public Ec2Client connect(
+            AwsCredentialsProvider credentialsProvider, String ec2EndpointOverride, String regionName) {
         if (mock == null) {
             mock = createAmazonEC2Mock();
         }
         return mock;
+    }
+
+    @Override
+    public Ec2Client connect(AwsCredentialsProvider credentialsProvider, URL ec2EndpointOverride, String regionName) {
+        return connect(credentialsProvider, ec2EndpointOverride.toString(), regionName);
     }
 }

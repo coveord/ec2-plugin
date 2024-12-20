@@ -141,8 +141,6 @@ public abstract class EC2Cloud extends Cloud {
 
     public static final String DEFAULT_EC2_HOST = "us-east-1";
 
-    public static final String DEFAULT_EC2_ENDPOINT = "https://ec2.amazonaws.com";
-
     public static final String AWS_URL_HOST = "amazonaws.com";
 
     public static final String AWS_CN_URL_HOST = "amazonaws.com.cn";
@@ -267,6 +265,8 @@ public abstract class EC2Cloud extends Cloud {
         }
         return null;
     }
+
+    public abstract String getRegion();
 
     public abstract URL getEc2EndpointUrl() throws IOException;
 
@@ -1174,7 +1174,7 @@ public abstract class EC2Cloud extends Cloud {
 
     private Ec2Client reconnectToEc2() throws IOException {
         synchronized (this) {
-            connection = AmazonEC2Factory.getInstance().connect(createCredentialsProvider(), getEc2EndpointUrl());
+            connection = AmazonEC2Factory.getInstance().connect(createCredentialsProvider(), (URL) null, getRegion());
             return connection;
         }
     }
@@ -1477,7 +1477,7 @@ public abstract class EC2Cloud extends Cloud {
 
                 AwsCredentialsProvider credentialsProvider = createCredentialsProvider(
                         useInstanceProfileForCredentials, credentialsId, roleArn, roleSessionName, region);
-                Ec2Client ec2 = AmazonEC2Factory.getInstance().connect(credentialsProvider, ec2endpoint);
+                Ec2Client ec2 = AmazonEC2Factory.getInstance().connect(credentialsProvider, ec2endpoint, region);
                 ec2.describeInstances();
 
                 if (!privateKey.trim().isEmpty()) {
